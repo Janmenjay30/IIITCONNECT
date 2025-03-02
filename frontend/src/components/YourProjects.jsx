@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_URL from '../config';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -183,7 +184,7 @@ function YourProjects() {
     try {
       setLoading(true);
       const response = await axios.get(
-        `http://localhost:5000/api/projects/${projectId}/applications`,
+        `${API_URL}/api/projects/${projectId}/applications`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,

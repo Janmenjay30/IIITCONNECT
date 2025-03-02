@@ -5,6 +5,7 @@ import {toast} from "react-hot-toast";
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import API_URL from '../config';
 
 function ProjectDetails() {
     const [project, setProject] = useState({
@@ -33,7 +34,7 @@ function ProjectDetails() {
         // console.log('Submitting application data:', applicationData); // Log the data before sending
     
         try {
-            const response = await axios.post(`http://localhost:5000/api/projects/${projectId}/applicants`, applicationData);
+            const response = await axios.post(`${API_URL}/api/projects/${projectId}/applicants`, applicationData);
             console.log(response.data);
             
             // Clear form fields and close popup

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from 'axios'; // Import axios
 import { useNavigate } from "react-router-dom";
+import API_URL from "../config";
 
 const CreateProjectPage = () => {
   const [formData, setFormData] = useState({
@@ -34,7 +35,7 @@ const CreateProjectPage = () => {
       const token=localStorage.getItem("token");
 
       const response=await axios.post(
-        "http://localhost:5000/api/projects",  // Backend API endpoint
+        `${API_URL}/api/projects`,  // Backend API endpoint
         formData,
         {
           headers:{

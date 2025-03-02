@@ -2,6 +2,7 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ProjectCard from "./ProjectCard";
+import API_URL from "../config";
 
 const HomePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -23,7 +24,7 @@ const HomePage = () => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:5000/api/projects");
+        const response = await axios.get(`${API_URL}/api/projects`);
         setProjects(response.data.data);
         setLoading(false);
       } catch (error) {

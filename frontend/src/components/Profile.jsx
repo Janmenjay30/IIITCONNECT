@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from "react-hot-toast";
 import { Link } from 'react-router-dom';
+import API_URL from '../config';
 
 function Profile() {
   const [user, setUser] = useState({});
@@ -25,7 +26,7 @@ function Profile() {
         return;
       }
       
-      const response = await axios.get("http://localhost:5000/api/users/profile", {
+      const response = await axios.get(`${API_URL}/api/users/profile`, {
         headers: {  
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -33,7 +34,7 @@ function Profile() {
       });
       
       // Fetch user's projects
-      const projectsResponse = await axios.get("http://localhost:5000/api/projects/by-creator", {
+      const projectsResponse = await axios.get(`${API_URL}/api/projects/by-creator`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
