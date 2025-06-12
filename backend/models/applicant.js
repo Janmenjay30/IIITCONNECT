@@ -5,7 +5,7 @@ const applicantSchema=new mongoose.Schema({
     github:{type:String},
     areaOfExpertise:{type:String,required:true},
     description:{type:String,required:true},
-    skills:{type:String},
+    skills:[{type:String}],
     availability:{type:Number,required:true},
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project' },
 

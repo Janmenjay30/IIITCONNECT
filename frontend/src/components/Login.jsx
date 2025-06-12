@@ -20,21 +20,22 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-  
+
     try {
-      const response = await axiosInstance.post('/api/auth/login', {
-        email: formData.email,
-        password: formData.password,
-      });
-  
-      if (response.status === 200) {
-        console.log("Login Successful:", response.data);
-        localStorage.setItem("token", response.data.token);
-        navigate("/");
-      }
+        const response = await axiosInstance.post('/api/auth/login', {
+            email: formData.email,
+            password: formData.password,
+        });
+
+        if (response.status === 200) {
+            console.log("Login Successful:", response.data);
+            localStorage.setItem("token", response.data.token); // Store the token
+            localStorage.setItem("userId", response.data.userId); // Store the userId
+            navigate("/");
+        }
     } catch (err) {
-      console.error("Error during login:", err);
-      setError(err.response?.data?.message || "Network error. Please check your connection.");
+        console.error("Error during login:", err);
+        setError(err.response?.data?.message || "Network error. Please check your connection.");
     }
   };
 

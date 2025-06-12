@@ -145,6 +145,33 @@ const submitApplication = async (req, res) => {
       res.status(500).send('Server Error in projectController submitApplication');
     }
   };
+
+  const getAllApplications=async(req,res)=>{
+    // console.log("in getAllApplications");
+    try{
+      const projectId=req.params.projectId;
+      // console.log("projectId in getAllApplications",projectId);
+
+      const project=await Project.findById(projectId).populate(
+        {
+          path:'applications',
+          model: 'Applicant',
+        }
+      ).exec();
+
+      if(!project){
+        return res.status(404).json({message:'Project not Found'});
+
+      }
+
+      res.json(project.applications);
+
+    }
+    catch(err){
+      console.error(err);
+      res.status(500).send("Server Error in ProjectController in getAllApplications")
+    }
+  }
   
 
-module.exports = { createProject,getAllProjects,getProjectById,submitApplication,getProjectByCreator};
+module.exports = { getAllApplications,createProject,getAllProjects,getProjectById,submitApplication,getProjectByCreator};

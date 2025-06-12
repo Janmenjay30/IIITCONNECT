@@ -1,26 +1,27 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/user');
 
-const authMiddleware = (req, res, next) => {
-  const authHeader = req.header('Authorization');
-
-  if (!authHeader) {
-    return res.status(401).json({ message: 'Access denied. No token provided.' });
-  }
-
-  const [bearer, token] = authHeader.split(' ');  // Split the header
-
-  if (!token || bearer !== 'Bearer') {
-    return res.status(401).json({ message: 'Invalid token format' });
-  }
-
+const authMiddleware = async (req, res, next) => {
   try {
-    const verified = jwt.verify(token, process.env.JWT_SECRET);
-    // console.log("verified",verified);
-    req.user = verified.user.id;
+    const token = req.header('Authorization')?.split(' ')[1]; // Extract token from Authorization header
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided, authorization denied' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Verify the token
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({ message: 'Invalid token, authorization denied' });
+    }
+
+    req.user = await User.findById(decoded.id).select('-password'); // Attach user to the request
+    if (!req.user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     next();
-  } catch (error) {
-    console.error("JWT Verification Error:", error);
-    res.status(400).json({ message: 'Invalid token.' });
+  } catch (err) {
+    console.error('JWT Verification Error:', err.message);
+    res.status(401).json({ message: 'Token verification failed, authorization denied' });
   }
 };
 

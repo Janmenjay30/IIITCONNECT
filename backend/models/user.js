@@ -8,13 +8,20 @@ const userSchema = new mongoose.Schema({
   skills: [{ type: String }],
   bio: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
-},{toJSON:{virtuals:true},toObject:{virtual:true}});
+  privateChats: [
+    {
+      chatUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // ID of the user in the private chat
+      chatUserName: { type: String }, // Name of the user in the private chat
+      chatUserEmail: { type: String }, // Email of the user in the private chat
+      roomId: { type: String }, // Unique room ID for the private chat
+    },
+  ],
+}, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
-userSchema.virtual('projects',{
-  ref:'Project',
-  localField:'_id',
-  foreignField:'creator',
-
+userSchema.virtual('projects', {
+  ref: 'Project',
+  localField: '_id',
+  foreignField: 'creator',
 });
 
 module.exports = mongoose.model("User", userSchema);
