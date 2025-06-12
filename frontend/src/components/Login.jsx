@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import API_URL from "../config";
+import axiosInstance from '../utils/axios';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -19,26 +20,21 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-
+  
     try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, {
+      const response = await axiosInstance.post('/api/auth/login', {
         email: formData.email,
         password: formData.password,
       });
-
+  
       if (response.status === 200) {
-        // Login successful
         console.log("Login Successful:", response.data);
-        localStorage.setItem("token", response.data.token); // Store token
-        navigate("/"); // Redirect to profile page (adjust as needed)
-      } else {
-        // Login failed
-        console.error("Login Failed:", response.data);
-        setError(response.data.message || "Login failed. Please try again.");
+        localStorage.setItem("token", response.data.token);
+        navigate("/");
       }
     } catch (err) {
       console.error("Error during login:", err);
-      setError(err.response?.data?.message || "An unexpected error occurred.");
+      setError(err.response?.data?.message || "Network error. Please check your connection.");
     }
   };
 

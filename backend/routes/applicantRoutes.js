@@ -8,4 +8,4 @@ router.get('/numberOfApplications',authMiddleware,applicantController.getNumberO
 
 router.get('/:projectId',authMiddleware,applicantController.getAllApplications);
 
-module.exports=router;
+module.exports=router ; 

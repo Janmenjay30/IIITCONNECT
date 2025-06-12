@@ -6,12 +6,13 @@ import LoginPage from "./components/Login";
 import Profile from "./components/Profile";
 import ProjectDetails from "./components/ProjectDetails";
 import RegisterPage from "./components/Register";
-import YourProjects from "./components/YourProjects";
+import YourProjects from "./components/YourProjects"
+import ChatPage from "./components/ChatPage";
 
 function App() {
   return (
     <>
-      {/* Toaster is wrapped at the top level */}
+      
       <Toaster 
         position="top-right" // Optional: Set default position for toasts
         toastOptions={{
@@ -27,6 +28,7 @@ function App() {
           <Route path="/projects/:projectId" element={<ProjectDetails />} />
           <Route path="/profile" element={<Profile/>}/>
           <Route path="/your-projects" element={<YourProjects/>}/>
+          <Route path="/chat" element={<ChatPage/>}/>
         </Routes>
       </Router>
     </>

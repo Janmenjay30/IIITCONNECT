@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ProjectCard from "./ProjectCard";
 import API_URL from "../config";
+import Navbar from "./Navbar";
 
 const HomePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -12,6 +13,7 @@ const HomePage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -65,100 +67,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation Bar */}
-      <nav className="bg-white shadow-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <Link to="/" className="flex-shrink-0">
-                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  IIITBh Connect
-                </span>
-              </Link>
-            </div>
-            
-            <div className="hidden md:block">
-              <div className="ml-10 flex items-center space-x-6">
-                <Link 
-                  to="/" 
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium border-b-2 border-blue-600"
-                >
-                  Projects
-                </Link>
-                
-                {isLoggedIn && (
-                  <Link 
-                    to="/your-projects" 
-                    className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                  >
-                    Your Projects
-                  </Link>
-                )}
-                
-                <Link 
-                  to="/chat" 
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Messages
-                </Link>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {!isLoggedIn ? (
-                <>
-                  <Link
-                    to="/login"
-                    className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out"
-                  >
-                    Register
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <div className="relative group">
-                    <button className="flex items-center text-sm font-medium text-gray-700 focus:outline-none">
-                      <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                        {localStorage.getItem("name") ? localStorage.getItem("name").charAt(0).toUpperCase() : "U"}
-                      </span>
-                    </button>
-                    <div className="absolute w-full h-2 bottom-0 left-0 transform translate-y-full"></div>
-                    <div className="absolute right-0 w-48 mt-2 origin-top-right bg-white divide-y divide-gray-100 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-250 ease-in-out">
-                      <div className="py-1">
-                        <Link
-                          to="/profile"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Your Profile
-                        </Link>
-                        <Link
-                          to="/your-projects"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Your Projects
-                        </Link>
-                      </div>
-                      <div className="py-1">
-                        <button
-                          onClick={handleLogout}
-                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        >
-                          Sign out
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar isLoggedIn={isLoggedIn} handleLogout={handleLogout} />
 
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-16 md:py-24">
@@ -356,6 +265,17 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
+      <Link
+  to="/chat"
+  className="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-lg font-semibold transition"
+  title="Go to Chat"
+>
+  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.8L3 21l1.8-4A8.96 8.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  </svg>
+  Message
+</Link>
+
     </div>
   );
 };

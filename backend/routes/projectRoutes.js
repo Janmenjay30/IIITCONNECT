@@ -18,6 +18,8 @@ router.get('/:projectId',projectController.getProjectById);
 router.post('/:projectId/applicants', projectController.submitApplication);
 
 
+router.get('/:projectId/applications', projectController.getAllApplications);
+
 
 
 module.exports = router;
