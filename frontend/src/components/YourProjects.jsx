@@ -12,11 +12,13 @@ const YourProjects = () => {
   const [selectedApplications, setSelectedApplications] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState(null);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
 
   const handleViewApplications = async (projectId) => {
     setModalLoading(true);
     setModalError(null);
     setModalOpen(true);
+    setSelectedProjectId(projectId);
     try {
       const token = localStorage.getItem("token");
       const res = await axios.get(
@@ -30,6 +32,27 @@ const YourProjects = () => {
     }
     setModalLoading(false);
   };
+
+  const handleApplicationHandled = async () => {
+    // Refresh applications after accept/reject
+    if (selectedProjectId) {
+      await handleViewApplications(selectedProjectId);
+    }
+    // Optionally refresh the projects list to update application counts
+    const fetchYourProjects = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(`${API_URL}/api/projects/by-creator`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProjects(response.data);
+      } catch (err) {
+        console.error("Failed to refresh projects");
+      }
+    };
+    fetchYourProjects();
+  };
+
 
   useEffect(() => {
     const fetchYourProjects = async () => {
@@ -54,7 +77,7 @@ const YourProjects = () => {
 
   return (
     
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pt-20">
       <div className="max-w-5xl mx-auto px-4">
         <h1 className="text-3xl font-bold mb-6 text-gray-800">Your Projects</h1>
         
@@ -117,8 +140,13 @@ const YourProjects = () => {
             ))}
             <ApplicationModal
               isOpen={modalOpen}
-              onClose={() => setModalOpen(false)}
+              onClose={() => {
+                setModalOpen(false);
+                setSelectedApplications([]);
+                setSelectedProjectId(null);
+              }}
               applications={selectedApplications}
+              projectId={selectedProjectId}
               loading={modalLoading}
               error={modalError}
             />

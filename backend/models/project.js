@@ -31,6 +31,14 @@ const projectSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  teamMembers: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    role: { type: String, required: true }, // Frontend, Backend, UI/UX, etc.
+    joinedAt: { type: Date, default: Date.now },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' }
+  }],
+  maxTeamSize: { type: Number, default: 10 },
+  currentTeamSize: { type: Number, default: 1 }, // Creator counts as 1
   
 });
 

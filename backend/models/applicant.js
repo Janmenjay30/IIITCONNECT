@@ -1,34 +1,19 @@
 const mongoose = require('mongoose');
 
-const applicationSchema = new mongoose.Schema({
-  // Reference to the project being applied to
-  projectId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Project',
-    required: true 
-  },
-  // Reference to the user who is applying
-  applicantId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User',
-    required: true 
-  },
-  // Application-specific message or cover letter
-  message: { 
-    type: String, 
-    required: true 
-  },
-  // Track the status of the application
+const applicantSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  github: { type: String },
+  areaOfExpertise: { type: String, required: true },
+  description: { type: String, required: true },
+  skills: { type: String },
+  availability: { type: String, required: true },
+  projectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', required: true },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'rejected'], // Enforces specific values
+    enum: ['pending', 'accepted', 'rejected'],
     default: 'pending'
-  },
-  // The role the user is applying for
-  roleAppliedFor: {
-    type: String,
-    required: true
   }
-}, { timestamps: true }); // timestamps adds createdAt and updatedAt automatically
+}, { timestamps: true });
 
-module.exports = mongoose.model('Application', applicationSchema);
+module.exports = mongoose.model('Applicant', applicantSchema);

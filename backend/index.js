@@ -13,6 +13,7 @@ const jwt = require('jsonwebtoken');
 const User = require('./models/user');
 const Message = require('./models/message');
 const messageRoutes = require('./routes/messageRoutes');
+require('./models/applicant');
 
 dotenv.config(); // ✅ .env file loaded
 
@@ -41,7 +42,7 @@ db()
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
