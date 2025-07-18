@@ -1,38 +1,36 @@
-import { Toaster } from "react-hot-toast"; // Import Toaster from react-hot-toast
-import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
-import CreateProjectPage from "./components/CreateProjectPage";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
 import HomePage from "./components/Homepage";
-import LoginPage from "./components/Login";
-import Profile from "./components/Profile";
 import ProjectDetails from "./components/ProjectDetails";
-import RegisterPage from "./components/Register";
-import YourProjects from "./components/YourProjects"
+import YourProjects from "./components/YourProjects";
+import Profile from "./components/Profile";
 import ChatPage from "./components/ChatPage";
+import LoginPage from "./components/Login";
+import CreateProjectPage from "./components/CreateProjectPage";
+import RegisterPage from "./components/Register";
+import ShowUser from "./testing/ShowUser";
+import { Toaster } from "react-hot-toast";
 
-function App() {
+const App = () => {
   return (
-    <>
-      
-      <Toaster 
-        position="top-right" // Optional: Set default position for toasts
-        toastOptions={{
-          duration: 3000, // Optional: Set default duration for toasts
-        }}
-      />
-      <Router>
+    <Router>
+      <Layout>
+        <Toaster />
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/projects/:projectId" element={<ProjectDetails />} />
+          <Route path="/your-projects" element={<YourProjects />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/chat" element={<ChatPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/create-project" element={<CreateProjectPage />} />
-          <Route path="/projects/:projectId" element={<ProjectDetails />} />
-          <Route path="/profile" element={<Profile/>}/>
-          <Route path="/your-projects" element={<YourProjects/>}/>
-          <Route path="/chat" element={<ChatPage/>}/>
+          <Route path="/showUser" element={<ShowUser/>}/>
         </Routes>
-      </Router>
-    </>
+      </Layout>
+    </Router>
   );
-}
+};
 
 export default App;

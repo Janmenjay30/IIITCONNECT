@@ -27,7 +27,7 @@ const ChatPage = () => {
   const myId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
 
-  // Fetch private chats on mount
+  // Fetch private chats on  mount
   useEffect(() => {
     const fetchPrivateChats = async () => {
       try {
@@ -35,6 +35,7 @@ const ChatPage = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         setPrivateChats(response.data);
+        console.log("Private chats fetched successfully:", response.data);
       } catch (err) {
         console.error("Failed to fetch private chats:", err);
         setError("Failed to load chat history");
@@ -97,24 +98,31 @@ const ChatPage = () => {
   }, [token]);
 
   // Load messages when room changes
-  useEffect(() => {
-    const loadMessages = async () => {
-      try {
-        const response = await axios.get(`${SOCKET_URL}/api/messages/${roomId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setMessages(response.data);
-      } catch (err) {
-        console.error("Failed to load messages:", err);
+  // Load messages when room changes
+useEffect(() => {
+  const loadMessages = async () => {
+    try {
+      const response = await axios.get(`${SOCKET_URL}/api/messages/${roomId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log("Loaded messages for room:", roomId, response.data);
+      setMessages(response.data);
+    } catch (err) {
+      console.error("Failed to load messages for room:", roomId, err);
+      // Don't show error for new private chats that have no messages yet
+      if (err.response?.status !== 404) {
         setError("Failed to load messages");
+      } else {
+        setMessages([]); // Clear messages for new chat
       }
-    };
-
-    if (socketRef.current?.connected && roomId) {
-      socketRef.current.emit("join room", roomId);
-      loadMessages();
     }
-  }, [roomId, token]);
+  };
+
+  if (socketRef.current?.connected && roomId) {
+    socketRef.current.emit("join room", roomId);
+    loadMessages();
+  }
+}, [roomId, token]);
 
   // User search handler with debounce
   useEffect(() => {
@@ -152,7 +160,8 @@ const ChatPage = () => {
     try {
       socketRef.current.emit("chat message", { 
         text: input, 
-        room: roomId 
+        room: roomId,
+        username: myId // Assuming myId is the username or identifier
       });
       setInput("");
     } catch (err) {
@@ -173,27 +182,32 @@ const ChatPage = () => {
       setError("User session expired. Please login again.");
       return;
     }
-
     const privateRoomId = [myId, user._id].sort().join("_");
+    console.log("My ID:", myId);
+    console.log("Selected user ID:", user._id);
+    console.log("Starting private chat with room ID:", privateRoomId);
     setRoomId(privateRoomId);
     setCurrentChat(user);
     setShowUserList(false);
     setSearch("");
 
+  
     // Update private chats list
-    setPrivateChats(prev => {
-      const exists = prev.some(chat => chat._id === user._id);
-      return exists ? prev : [...prev, user];
-    });
+      setPrivateChats(prev => {
+        const exists = prev.some(chat => chat.partnerId._id === user._id);
+        return exists ? prev : [...prev, { 
+          _id: user._id, 
+          partnerId: user, 
+          roomId: privateRoomId 
+        }];
+      });
 
     // Save to backend
     try {
       await axios.post(
         `${SOCKET_URL}/api/users/private-chats`,
         {
-          chatUserId: user._id,
-          chatUserName: user.name,
-          chatUserEmail: user.email,
+          partnerId: user._id,      
           roomId: privateRoomId
         },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -205,14 +219,15 @@ const ChatPage = () => {
   }, [myId, token]);
 
   // Render methods
-  const renderMessage = (msg, idx) => (
-    <div key={`${msg._id || idx}`} className="mb-2">
-      <span className="font-semibold text-blue-700">
-        {msg.username || "User"}:
-      </span> 
-      <span className="ml-2">{msg.text}</span>
-    </div>
-  );
+  
+const renderMessage = (msg, idx) => (
+  <div key={`${msg._id || idx}`} className="mb-2">
+    <span className="font-semibold text-blue-700">
+      {msg.sender?.name || "User"}: {/* Change msg.username to msg.sender.name */}
+    </span>
+    <span className="ml-2">{msg.text}</span>
+  </div>
+);
 
   const renderChannel = (channel) => (
     <div
@@ -226,17 +241,17 @@ const ChatPage = () => {
     </div>
   );
 
-  const renderUser = (user) => (
-    <div
-      key={user._id}
-      className={`p-2 rounded cursor-pointer ${
-        currentChat._id === user._id ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
-      }`}
-      onClick={() => handleUserSelect(user)}
-    >
-      {user.name}
-    </div>
-  );
+  const renderUser = (chat) => ( // Changed parameter name for clarity
+  <div
+    key={chat._id}
+    className={`p-2 rounded cursor-pointer ${
+      currentChat._id === chat.partnerId._id ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
+    }`}
+    onClick={() => handleUserSelect(chat.partnerId)} // Pass the partnerId object
+  >
+    {chat.partnerId.name || chat.partnerId.email}
+  </div>
+);
 
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -304,7 +319,7 @@ const ChatPage = () => {
           </div>
         )}
         
-        <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-4 pt-10 bg-gray-50">
           {messages.length > 0 ? (
             messages.map(renderMessage)
           ) : (

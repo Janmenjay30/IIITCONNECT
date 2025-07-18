@@ -34,6 +34,15 @@ function ProjectDetails() {
         // console.log('Submitting application data:', applicationData); // Log the data before sending
     
         try {
+            if(!applicationData.name || !applicationData.email || !applicationData.areaOfExpertise) {
+                toast.error("Please fill in all required fields.");
+                return;
+            }
+            if (project.creator && applicationData.email === project.creator.email) {
+                toast.error("You cannot apply to your own project.");
+                return;
+            }
+        
             const response = await axios.post(`${API_URL}/api/projects/${projectId}/applicants`, applicationData);
             console.log(response.data);
             
@@ -51,8 +60,12 @@ function ProjectDetails() {
             setIsPopUp(false);
             
         } catch (error) {
-            console.error('Error submitting application:', error);
-        }
+                console.error('Error submitting application:', error);
+                toast.error(
+                error.response?.data?.message ||
+                "Failed to submit application. Please try again."
+                );
+            }
     };
     
 

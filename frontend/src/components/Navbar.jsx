@@ -1,31 +1,255 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import API_URL from "../config"; // Adjust the import path as necessary
 
-const Navbar = ({ isLoggedIn, handleLogout }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+const Navbar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [user, setUser] = useState(null);
+
+  // Check if the user is logged in by checking the presence of a token in localStorage
+  const isLoggedIn = !!localStorage.getItem("token");
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setShowUserDropdown(false);
+  }, [location]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserDropdown && !event.target.closest('.user-dropdown')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserDropdown]);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const response = await fetch(`${API_URL}/api/users/profile`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+          });
+          const data = await response.json();
+          // console.log("User data fetched:", response);
+          if (!response.ok) {
+            throw new Error(data.message || "Failed to fetch user profile");
+          }
+          setUser(data); // Set user information
+        } catch (err) {
+          console.error("Failed to fetch user profile:", err);
+        }
+      }
+    };
+     fetchUser();
+  }, []);
+
+  const handleLogout = () => {
+    // Clear the token and userId from localStorage
+    localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    setShowUserDropdown(false);
+    setUser(null);
+    // Redirect to the login page
+    navigate("/login");
+  };
+
+  const isActive = (path) => location.pathname === path;
+
+  const navLinks = [
+    { path: "/", label: "Home" },
+    { path: "/your-projects", label: "Projects" },
+    { path: "/chat", label: "Messages" },
+  ];
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-10">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      isScrolled 
+        ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50' 
+        : 'bg-white/90 backdrop-blur-sm shadow-sm'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0">
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200 group-hover:scale-105">
+              <span className="text-white font-bold text-lg">IB</span>
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 IIITBh Connect
-              </span>
-            </Link>
+              </h1>
+              <p className="text-xs text-gray-500 -mt-1">Collaborate & Build</p>
+            </div>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-1">
+            {navLinks.map(({ path, label }) => (
+              <Link
+                key={path}
+                to={path}
+                className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActive(path)
+                    ? 'text-blue-700 bg-blue-50 shadow-sm'
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                {label}
+                {isActive(path) && (
+                  <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full"></div>
+                )}
+              </Link>
+            ))}
           </div>
-          {/* Hamburger for mobile */}
-          <div className="flex md:hidden">
+
+          {/* Right side actions */}
+          <div className="flex items-center space-x-3">
+            {isLoggedIn ? (
+              <>
+                {/* Notifications */}
+                <button className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                </button>
+
+                {/* Create Project Button */}
+                <Link
+                  to="/create-project"
+                  className="hidden sm:flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                  <span>New Project</span>
+                </Link>
+
+                {/* User Dropdown */}
+                <div className="relative user-dropdown">
+                  <button
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-tr from-purple-400 to-pink-400 rounded-full flex items-center justify-center text-white font-medium text-sm shadow-md">
+                      U
+                    </div>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showUserDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {showUserDropdown && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 animate-in slide-in-from-top-2 duration-200">
+                      {user ? (
+                          <div className="px-4 py-3 border-b border-gray-100">
+                            <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                            <p className="text-xs text-gray-500">{user.email}</p>
+                          </div>
+                        ) : (
+                          <div className="px-4 py-3 border-b border-gray-100">
+                            <p className="text-sm font-medium text-gray-900">John Doe</p>
+                            <p className="text-xs text-gray-500">john@iiitbh.ac.in</p>
+                          </div>
+                        )}
+                      
+                      <Link
+                        to="/profile"
+                        className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => setShowUserDropdown(false)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>Your Profile</span>
+                      </Link>
+                      
+                      <Link
+                        to="/your-projects"
+                        className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => setShowUserDropdown(false)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <span>Your Projects</span>
+                      </Link>
+                      
+                      <Link
+                        to="/settings"
+                        className="flex items-center space-x-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        onClick={() => setShowUserDropdown(false)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>Settings</span>
+                      </Link>
+                      
+                      <div className="border-t border-gray-100 mt-2 pt-2">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center space-x-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          <span>Sign out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center space-x-3">
+                <Link
+                  to="/login"
+                  className="text-gray-600 hover:text-blue-600 font-medium transition-colors px-3 py-2 rounded-lg hover:bg-gray-50"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile Menu Button */}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 hover:bg-gray-100 focus:outline-none"
-              aria-label="Main menu"
-              aria-expanded={mobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             >
-              <svg className="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                {mobileMenuOpen ? (
+              <svg className={`w-6 h-6 transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isMobileMenuOpen ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 ) : (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -33,155 +257,87 @@ const Navbar = ({ isLoggedIn, handleLogout }) => {
               </svg>
             </button>
           </div>
-          {/* Desktop Menu */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-6">
-              <Link 
-                to="/" 
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium border-b-2 border-blue-600"
-              >
-                Projects
-              </Link>
-              {isLoggedIn && (
-                <Link 
-                  to="/your-projects" 
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Your Projects
-                </Link>
-              )}
-              {/* <Link
-                to="/chat"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium shadow transition duration-150 ease-in-out"
-              >
-                <svg className="inline-block w-5 h-5 mr-1 -mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.8L3 21l1.8-4A8.96 8.96 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Messages
-              </Link> */}
-            </div>
-          </div>
-          {/* User/Profile Dropdown */}
-          <div className="hidden md:flex items-center space-x-4">
-            {!isLoggedIn ? (
-              <>
-                <Link
-                  to="/login"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out"
-                >
-                  Register
-                </Link>
-              </>
-            ) : (
-              <div className="relative group">
-                <button className="flex items-center text-sm font-medium text-gray-700 focus:outline-none">
-                  <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                    {localStorage.getItem("name") ? localStorage.getItem("name").charAt(0).toUpperCase() : "U"}
-                  </span>
-                </button>
-                <div className="absolute w-full h-2 bottom-0 left-0 transform translate-y-full"></div>
-                <div className="absolute right-0 w-48 mt-2 origin-top-right bg-white divide-y divide-gray-100 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-250 ease-in-out">
-                  <div className="py-1">
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Your Profile
-                    </Link>
-                    <Link
-                      to="/your-projects"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Your Projects
-                    </Link>
-                  </div>
-                  <div className="py-1">
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
+
       {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden bg-white shadow-md">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            <Link
-              to="/"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Projects
-            </Link>
-            {isLoggedIn && (
+      <div className={`md:hidden transition-all duration-300 overflow-hidden ${
+        isMobileMenuOpen ? 'max-h-96 bg-white border-t border-gray-200 shadow-lg' : 'max-h-0'
+      }`}>
+        <div className="px-4 py-4">
+          {/* Mobile Navigation Links */}
+          <div className="space-y-2 mb-4">
+            {navLinks.map(({ path, label }) => (
               <Link
-                to="/your-projects"
-                className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
-                onClick={() => setMobileMenuOpen(false)}
+                key={path}
+                to={path}
+                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  isActive(path)
+                    ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600'
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+                onClick={() => setIsMobileMenuOpen(false)}
               >
-                Your Projects
+                {label}
               </Link>
-            )}
-            <Link
-              to="/chat"
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Messages
-            </Link>
-            {!isLoggedIn ? (
-              <>
-                <Link
-                  to="/login"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-blue-700 bg-blue-100 hover:bg-blue-200"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Register
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/profile"
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Your Profile
-                </Link>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100"
-                >
-                  Sign out
-                </button>
-              </>
-            )}
+            ))}
           </div>
+
+          {/* Mobile Actions */}
+          {isLoggedIn ? (
+            <div className="space-y-2 pt-4 border-t border-gray-200">
+              <Link
+                to="/create-project"
+                className="flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-medium shadow-md w-full"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span>New Project</span>
+              </Link>
+              
+              <Link
+                to="/profile"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span>Your Profile</span>
+              </Link>
+              
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg w-full text-left"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Sign out</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2 pt-4 border-t border-gray-200">
+              <Link
+                to="/login"
+                className="block text-center py-3 text-gray-600 hover:text-blue-600 font-medium hover:bg-gray-50 rounded-lg transition-colors"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/register"
+                className="block text-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-lg font-medium shadow-md"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Get Started
+              </Link>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </nav>
   );
 };

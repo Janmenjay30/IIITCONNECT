@@ -30,7 +30,7 @@ const login = async (req, res) => {
 const register = async (req, res) => {
     const {name,email,password}=req.body;
     try{
-        console.log("in authControlle register")
+        // console.log("in authControlle register")
         const userExists=await User.findOne({email});
         if(userExists){
             return res.status(400).json({message: 'User already exists'});
@@ -51,6 +51,7 @@ const getProfile = async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
+      console.log("user is ",user);
       res.json(user);
     } catch (err) {
       console.error(err.message);

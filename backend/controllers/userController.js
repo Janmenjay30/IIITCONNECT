@@ -82,5 +82,16 @@ const getUserById = async (req, res) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, getUserById };
+const getAllUsers=async(req,res)=>{
+  try{
+    const users = await User.find().select('-password'); // Exclude password
+    res.json(users);
+  }
+  catch(err){
+    console.error(err.message);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
+}
+
+module.exports = { getProfile, updateProfile, getUserById, getAllUsers };
 

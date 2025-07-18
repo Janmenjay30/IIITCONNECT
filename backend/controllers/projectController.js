@@ -47,13 +47,14 @@ const getProjectByCreator=async(req,res)=>{
         const id=user._id;
         const projects=await Project.find({creator:id}).populate('creator','name email').exec();
 
-        if (projects.length === 0) {
-            return res.status(200).json({ message: 'No projects found', projects: [] });
-          }
-        res.json(projects);
+        // if (projects.length === 0) {
+        //     return res.status(200).json({ message: 'No projects found', projects: [] });
+        //   }
+        res.status(200).json(projects);
     }
     catch(err){
         console.log(err);
+        res.status(500).json({ message: 'Server Error in getProjectByCreator' });
     }
 }
 
@@ -111,17 +112,27 @@ const submitApplication = async (req, res) => {
     try {
       const projectId = req.params.projectId;
       const { name, email, github, areaOfExpertise, description, skills, availability } = req.body;
-  
+
       if (!name || !email || !areaOfExpertise || !description || !availability) {
         return res.status(400).json({ message: 'Please provide all required fields' });
       }
-  
-      const project = await Project.findById(projectId);
-  
+
+      const project = await Project.findById(projectId).populate('creator', 'email');
+
       if (!project) {
         return res.status(404).json({ message: 'Project not found' });
       }
-  
+
+      // Prevent creator from applying to their own project (by email)
+      if (project.creator && project.creator.email && email === project.creator.email) {
+        return res.status(400).json({ message: "You cannot apply to your own project." });
+      }
+
+      // If you use authentication and req.user is available, you can also check by user ID:
+      // if (req.user && project.creator && req.user.toString() === project.creator._id.toString()) {
+      //   return res.status(400).json({ message: "You cannot apply to your own project." });
+      // }
+
       const application = new Applicant({
         name,
         email,
@@ -132,20 +143,18 @@ const submitApplication = async (req, res) => {
         availability,
         projectId: projectId
       });
-  
+
       await application.save();
-  
-      // Add the application to the project's applications array
+
       project.applications.push(application._id);
       await project.save();
-  
+
       res.json({ message: 'Application submitted successfully' });
     } catch (err) {
       console.error(err);
       res.status(500).send('Server Error in projectController submitApplication');
     }
-  };
-
+};
   const getAllApplications=async(req,res)=>{
     // console.log("in getAllApplications");
     try{

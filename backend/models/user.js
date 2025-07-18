@@ -8,14 +8,15 @@ const userSchema = new mongoose.Schema({
   skills: [{ type: String }],
   bio: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
-  privateChats: [
-    {
-      chatUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // ID of the user in the private chat
-      chatUserName: { type: String }, // Name of the user in the private chat
-      chatUserEmail: { type: String }, // Email of the user in the private chat
-      roomId: { type: String }, // Unique room ID for the private chat
-    },
-  ],
+  // Inside userSchema
+privateChats: [
+  {
+    // Just store the ID of the person you're chatting with
+    partnerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, 
+    // The unique room ID for this private chat
+    roomId: { type: String}, 
+  },
+],
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 userSchema.virtual('projects', {

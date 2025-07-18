@@ -37,7 +37,7 @@ const YourProjects = () => {
       setError(null);
       try {
         const token = localStorage.getItem("token");
-        const response = await axios.get(`${API_URL}/api/projects/by-creator`, {
+        const response = await axios.get(`${API_URL}/api/projects/by-creator` , {
           headers: {
             Authorization: `Bearer ${token}`,
           },
