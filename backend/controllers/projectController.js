@@ -148,6 +148,8 @@ const acceptApplication = async (req, res) => {
 };
 
 
+
+
 // Reject an application
 const rejectApplication = async (req, res) => {
     try {
@@ -182,28 +184,36 @@ const rejectApplication = async (req, res) => {
     }
 };
 
-const getProjectByCreator=async(req,res)=>{
-    try{
-        const user=await User.findById(req.user).select('-password');
-        // console.log("user at getprojectsByCreator function ",user);
-
-        if(!user){
-            console.log("User not found");
-            return res.status(404).json({message:'User not found'});
+const getProjectByCreator = async (req, res) => {
+    try {
+        // Add debugging and validation
+        console.log("=== GET PROJECT BY CREATOR ===");
+        console.log("req.user:", req.user);
+        console.log("Headers:", req.headers.authorization);
+        
+        // Check if user exists
+        if (!req.user || !req.user._id) {
+            console.log("No user found in request");
+            return res.status(401).json({ message: 'User not authenticated' });
         }
-        const id=user._id;
-        const projects=await Project.find({creator:id}).populate('creator','name email').exec();
+        
+        const userId = req.user._id;
+        console.log("Fetching projects for creator:", userId);
+        
+        const projects = await Project.find({ creator: userId })
+            .populate('creator', 'name email')
+            .populate('teamMembers.userId', 'name email profilePicture skills')
+            .populate('applications')
+            .sort({ createdAt: -1 });
 
-        // if (projects.length === 0) {
-        //     return res.status(200).json({ message: 'No projects found', projects: [] });
-        //   }
-        res.status(200).json(projects);
+        console.log("Found projects:", projects.length);
+        
+        res.json(projects);
+    } catch (err) {
+        console.error('Error in getProjectByCreator:', err);
+        res.status(500).json({ message: 'Server Error in getting projects by creator' });
     }
-    catch(err){
-        console.log(err);
-        res.status(500).json({ message: 'Server Error in getProjectByCreator' });
-    }
-}
+};
 
 const getAllProjects=async(req,res)=>{
     try{
@@ -410,6 +420,105 @@ const getMyTeams = async (req, res) => {
     }
 };
 
+const removeMember = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+        const { memberId } = req.body;
+
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // Check if user is the project creator
+        if (project.creator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only project creator can remove members' });
+        }
+
+        // Remove member from team
+        project.teamMembers = project.teamMembers.filter(
+            member => member.userId.toString() !== memberId
+        );
+        project.currentTeamSize -= 1;
+
+        await project.save();
+        res.json({ message: 'Member removed successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server Error in removing member' });
+    }
+};
+
+const leaveProject = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // Don't allow creator to leave their own project
+        if (project.creator.toString() === req.user._id.toString()) {
+            return res.status(400).json({ message: 'Project creator cannot leave the project' });
+        }
+
+        // Remove user from team
+        project.teamMembers = project.teamMembers.filter(
+            member => member.userId.toString() !== req.user._id.toString()
+        );
+        project.currentTeamSize -= 1;
+
+        await project.save();
+        res.json({ message: 'Successfully left the project' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server Error in leaving project' });
+    }
+};
+
+// Update Role function
+const updateMemberRole = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+        const { memberId, newRole } = req.body;
+
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // Check if user is the project creator
+        if (project.creator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only project creator can update member roles' });
+        }
+
+        // Find and update member role
+        const member = project.teamMembers.find(
+            member => member.userId.toString() === memberId
+        );
+
+        if (!member) {
+            return res.status(404).json({ message: 'Member not found in team' });
+        }
+
+        member.role = newRole;
+        await project.save();
+
+        res.json({ 
+            message: 'Member role updated successfully',
+            member: {
+                userId: member.userId,
+                role: member.role,
+                status: member.status
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server Error in updating member role' });
+    }
+};
+
 module.exports = { 
     createProject,
     getAllProjects, 
@@ -420,5 +529,8 @@ module.exports = {
     acceptApplication, 
     rejectApplication, 
     getProjectTeam, 
-    getMyTeams 
+    getMyTeams ,
+    removeMember,
+    leaveProject,
+    updateMemberRole
 };

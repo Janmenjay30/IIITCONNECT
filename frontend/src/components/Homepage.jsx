@@ -75,7 +75,7 @@ const HomePage = () => {
           <div className="md:flex md:items-center md:justify-between">
             <div className="md:w-1/2 mb-8 md:mb-0">
               <h1 className="text-4xl md:text-5xl font-extrabold leading-tight mb-4">
-                Collaborate on Amazing Projects at IIIT Bhagalpur
+                Collaborate on Amazing Projects at IIIT Bhubaneswar
               </h1>
               <p className="text-xl mb-8 text-blue-100">
                 Find team members with the right skills or contribute your expertise to exciting projects
@@ -87,6 +87,7 @@ const HomePage = () => {
                 >
                   Start a Project
                 </Link>
+                
                 <a
                   href="#projects"
                   className="bg-blue-700 text-white border border-blue-400 px-6 py-3 rounded-lg font-semibold hover:bg-blue-800 transition duration-300 shadow-md"
@@ -238,7 +239,7 @@ const HomePage = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">IIITBh Connect</h3>
               <p className="text-gray-600">
-                A platform for IIIT Bhagalpur students to collaborate on projects and build teams.
+                A platform for IIIT Bhubaneswar students to collaborate on projects and build teams.
               </p>
             </div>
             <div>

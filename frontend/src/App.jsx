@@ -11,6 +11,8 @@ import CreateProjectPage from "./components/CreateProjectPage";
 import RegisterPage from "./components/Register";
 import ShowUser from "./testing/ShowUser";
 import { Toaster } from "react-hot-toast";
+import TeamManagementPage from "./components/TeamManagementPage";
+
 
 const App = () => {
   return (
@@ -27,6 +29,7 @@ const App = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/create-project" element={<CreateProjectPage />} />
           <Route path="/showUser" element={<ShowUser/>}/>
+          <Route path="/projects/:projectId/team" element={<TeamManagementPage />} />
         </Routes>
       </Layout>
     </Router>

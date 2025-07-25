@@ -11,16 +11,24 @@ router.use((req, res, next) => {
     next();
 });
 
-// Your existing routes in the correct order...
+// correct Order of routes
 router.get('/by-creator', authMiddleware, projectController.getProjectByCreator);
 router.post('/', authMiddleware, projectController.createProject);
 router.get('/', projectController.getAllProjects);
 router.post('/:projectId/applicants', projectController.submitApplication);
 router.get('/:projectId/applications', projectController.getAllApplications);
 
+// Missing endpoints to add:
+router.get('/:projectId/team', authMiddleware, projectController.getProjectTeam);
+router.post('/:projectId/remove-member', authMiddleware, projectController.removeMember);
+router.post('/:projectId/leave', authMiddleware, projectController.leaveProject);
+router.get('/my-teams', authMiddleware, projectController.getMyTeams);
+router.put('/:projectId/update-role', authMiddleware, projectController.updateMemberRole);
+
 // Team management routes
 router.post('/:projectId/accept-application', authMiddleware, projectController.acceptApplication);
 router.post('/:projectId/reject-application', authMiddleware, projectController.rejectApplication);
+
 
 // Dynamic route last
 router.get('/:projectId', projectController.getProjectById);

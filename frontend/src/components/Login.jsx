@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import API_URL from "../config";
 import axiosInstance from '../utils/axios';
+import toast from "react-hot-toast";
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -31,6 +32,7 @@ const LoginPage = () => {
             console.log("Login Successful:", response.data);
             localStorage.setItem("token", response.data.token); // Store the token
             localStorage.setItem("userId", response.data.userId); // Store the userId
+            toast.success("Login successful!");
             navigate("/");
         }
     } catch (err) {
