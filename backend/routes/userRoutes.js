@@ -5,31 +5,48 @@ const authMiddleware = require('../middleware/authMiddleware');
 const User=require('../models/user');
 
 
+// Create or get existing private chat
 router.post('/private-chats', authMiddleware, async (req, res) => {
-  const { partnerId, roomId } = req.body;
-  const currentUserId = req.user._id;
-
-  if (!partnerId || !roomId) {
-    return res.status(400).json({ message: 'Partner ID and Room ID are required' });
-  }
-
   try {
-    // This updates both users at the same time
-    await Promise.all([
-      // Add the partner to the current user's chat list
-      User.findByIdAndUpdate(currentUserId, {
-        $addToSet: { privateChats: { partnerId: partnerId, roomId: roomId } }
-      }),
-      // Add the current user to the partner's chat list
-      User.findByIdAndUpdate(partnerId, {
-        $addToSet: { privateChats: { partnerId: currentUserId, roomId: roomId } }
-      })
-    ]);
+    const { partnerId, roomId } = req.body;
+    const userId = req.user._id;
 
-    res.status(201).json({ message: 'Private chat created successfully' });
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ message: 'Failed to create private chat' });
+    console.log("Creating private chat:", { userId, partnerId, roomId });
+
+    // Check if chat already exists
+    const existingChat = await Message.findOne({
+      $or: [
+        { participants: { $all: [userId, partnerId] } },
+        { roomId: roomId }
+      ]
+    });
+
+    if (existingChat) {
+      console.log("Chat already exists:", existingChat._id);
+      return res.status(409).json({ 
+        message: "Chat already exists", 
+        chatId: existingChat._id 
+      });
+    }
+
+    // Create new chat document
+    const newChat = new Message({
+      participants: [userId, partnerId],
+      roomId: roomId,
+      partnerId: partnerId,
+      createdAt: new Date()
+    });
+
+    await newChat.save();
+    console.log("New private chat created:", newChat._id);
+
+    res.status(201).json({ 
+      message: "Private chat created successfully", 
+      chatId: newChat._id 
+    });
+  } catch (error) {
+    console.error("Error creating private chat:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

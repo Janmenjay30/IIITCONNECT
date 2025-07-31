@@ -27,25 +27,31 @@ const ChatPage = () => {
   const myId = localStorage.getItem("userId");
   const token = localStorage.getItem("token");
 
-  // Fetch private chats on  mount
-  useEffect(() => {
-    const fetchPrivateChats = async () => {
-      try {
-        const response = await axios.get(`${SOCKET_URL}/api/users/private-chats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setPrivateChats(response.data);
-        console.log("Private chats fetched successfully:", response.data);
-      } catch (err) {
-        console.error("Failed to fetch private chats:", err);
-        setError("Failed to load chat history");
-      }
-    };
-
-    if (token) {
-      fetchPrivateChats();
+  // Fetch private chats on mount
+useEffect(() => {
+  const fetchPrivateChats = async () => {
+    try {
+      const response = await axios.get(`${SOCKET_URL}/api/users/private-chats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Remove duplicates based on partnerId
+      const uniqueChats = response.data.filter((chat, index, self) => 
+        index === self.findIndex(c => c.partnerId._id === chat.partnerId._id)
+      );
+      
+      setPrivateChats(uniqueChats);
+      console.log("Private chats fetched successfully:", uniqueChats);
+    } catch (err) {
+      console.error("Failed to fetch private chats:", err);
+      setError("Failed to load chat history");
     }
-  }, [token]);
+  };
+
+  if (token) {
+    fetchPrivateChats();
+  }
+}, [token]);
 
   // Socket.IO connection and event handling
   useEffect(() => {
@@ -176,33 +182,37 @@ useEffect(() => {
     setCurrentChat(channel);
   }, []);
 
-  // User selection handler
-  const handleUserSelect = useCallback(async (user) => {
-    if (!myId) {
-      setError("User session expired. Please login again.");
-      return;
-    }
-    const privateRoomId = [myId, user._id].sort().join("_");
-    console.log("My ID:", myId);
-    console.log("Selected user ID:", user._id);
-    console.log("Starting private chat with room ID:", privateRoomId);
-    setRoomId(privateRoomId);
-    setCurrentChat(user);
-    setShowUserList(false);
-    setSearch("");
-
+// User selection handler
+const handleUserSelect = useCallback(async (user) => {
+  if (!myId) {
+    setError("User session expired. Please login again.");
+    return;
+  }
   
-    // Update private chats list
-      setPrivateChats(prev => {
-        const exists = prev.some(chat => chat.partnerId._id === user._id);
-        return exists ? prev : [...prev, { 
-          _id: user._id, 
-          partnerId: user, 
-          roomId: privateRoomId 
-        }];
-      });
+  const privateRoomId = [myId, user._id].sort().join("_");
+  console.log("My ID:", myId);
+  console.log("Selected user ID:", user._id);
+  console.log("Starting private chat with room ID:", privateRoomId);
+  
+  setRoomId(privateRoomId);
+  setCurrentChat(user);
+  setShowUserList(false);
+  setSearch("");
 
-    // Save to backend
+  // Check if chat already exists before adding to state
+  const existingChat = privateChats.find(chat => 
+    chat.partnerId._id === user._id || chat.roomId === privateRoomId
+  );
+  
+  if (!existingChat) {
+    // Update private chats list only if doesn't exist
+    setPrivateChats(prev => [...prev, { 
+      _id: user._id, 
+      partnerId: user, 
+      roomId: privateRoomId 
+    }]);
+
+    // Save to backend only if doesn't exist
     try {
       await axios.post(
         `${SOCKET_URL}/api/users/private-chats`,
@@ -214,9 +224,13 @@ useEffect(() => {
       );
     } catch (err) {
       console.error("Failed to save chat:", err);
-      setError("Failed to start private chat");
+      // Don't show error if chat already exists
+      if (err.response?.status !== 409) {
+        setError("Failed to start private chat");
+      }
     }
-  }, [myId, token]);
+  }
+}, [myId, token, privateChats]); 
 
   // Render methods
   
