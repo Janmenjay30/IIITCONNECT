@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import API_URL from "../config";
+import API_CONFIG from "../config/api";
 import { Link, useNavigate } from "react-router-dom";
 import ApplicationModal from "./Modals/ApplicationsModals";
 import { toast } from "react-hot-toast";
+import axiosInstance from "../utils/axios";
 
 const YourProjects = () => {
   const [projects, setProjects] = useState([]);
@@ -16,6 +17,7 @@ const YourProjects = () => {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
   const navigate = useNavigate();
+  const API_URL = API_CONFIG.BASE_URL;
 
   const handleViewApplications = async (projectId) => {
     setModalLoading(true);
@@ -50,7 +52,7 @@ const YourProjects = () => {
     setError(null);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`${API_URL}/api/projects/by-creator`, {
+      const response = await axiosInstance.get(`/api/projects/by-creator`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -76,7 +78,7 @@ const YourProjects = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      toast.success("Project deleted successfully!");
+      toast.success("Project deleted successfully!");   
       fetchYourProjects(); // Refresh the list
     } catch (error) {
       console.error("Error deleting project:", error);

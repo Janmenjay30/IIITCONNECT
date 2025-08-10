@@ -1,7 +1,8 @@
 import axios from "axios";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import API_URL from "../config";
+import API_URL from "../config/api";
+import axiosInstance from '../utils/axios';
 import toast from "react-hot-toast";
 
 const RegisterPage = () => {
@@ -29,7 +30,7 @@ const RegisterPage = () => {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/api/auth/register`, { 
+      const response = await axiosInstance.post('/api/auth/register', { 
         name: formData.name,
         email: formData.email,
         password: formData.password,

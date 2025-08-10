@@ -5,13 +5,15 @@ import { toast } from "react-hot-toast";
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
-import API_URL from '../config';
+import API_CONFIG from '../config/api';
 
 function ProjectDetails() {
     const [project, setProject] = useState({
         requiredRoles: [],
         tags: [],
     });
+    const API_URL = API_CONFIG.BASE_URL; // Use the API base URL from config
+    const SOCKET_URL = API_CONFIG.SOCKET_URL; // Use the socket URL from config
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

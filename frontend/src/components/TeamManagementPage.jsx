@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import API_URL from '../config';
+import API_CONFIG from '../config/api';
 
 const TeamManagementPage = () => {
   const { projectId } = useParams();
@@ -11,6 +11,8 @@ const TeamManagementPage = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const token = localStorage.getItem('token');
+  const API_URL = API_CONFIG.BASE_URL; // Use the API base URL from config
+  const SOCKET_URL = API_CONFIG.SOCKET_URL; // Use the socket URL from config
 
   useEffect(() => {
     fetchTeamData();

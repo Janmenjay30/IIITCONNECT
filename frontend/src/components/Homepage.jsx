@@ -2,8 +2,11 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ProjectCard from "./ProjectCard";
-import API_URL from "../config";
+
 import Navbar from "./Navbar";
+
+import API_CONFIG from '../config/api';
+const API_URL = API_CONFIG.BASE_URL;
 
 const HomePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

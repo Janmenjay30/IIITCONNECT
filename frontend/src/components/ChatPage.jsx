@@ -3,7 +3,9 @@ import { io } from "socket.io-client";
 import axios from "axios";
 import PropTypes from "prop-types";
 
-const SOCKET_URL = "http://localhost:5000";
+import API_CONFIG from '../config/api';
+
+const SOCKET_URL = API_CONFIG.SOCKET_URL;
 
 const PUBLIC_CHANNELS = [
   { id: "global", name: "Global" },

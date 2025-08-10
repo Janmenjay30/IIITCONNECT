@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import axios from 'axios'; // Import axios
 import { useNavigate } from "react-router-dom";
-import API_URL from "../config";
+import API_CONFIG from "../config/api";
 
 const CreateProjectPage = () => {
   const [formData, setFormData] = useState({
@@ -10,6 +10,8 @@ const CreateProjectPage = () => {
     requiredRoles: [],
     tags: [],
   });
+  const API_URL=API_CONFIG.BASE_URL; // Use the API base URL from config
+  const SOCKET_URL=API_CONFIG.SOCKET_URL; // Use the socket URL from config
 
   const [error, setError] = useState(null);
   const navigate = useNavigate();

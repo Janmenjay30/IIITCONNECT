@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from "react-hot-toast";
 import { Link } from 'react-router-dom';
-import API_URL from '../config';
+import API_CONFIG from '../config/api';
 
 function Profile() {
   const [user, setUser] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
-
+  
+  const API_URL = API_CONFIG.BASE_URL; // Use the API base URL from config
+  const SOCKET_URL = API_CONFIG.SOCKET_URL; // Use the socket URL from config
 
   const Badge = ({ children, className = "" }) => (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
