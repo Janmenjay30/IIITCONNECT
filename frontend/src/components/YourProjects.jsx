@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
-import API_CONFIG from "../config/api";
+
+
 import { Link, useNavigate } from "react-router-dom";
 import ApplicationModal from "./Modals/ApplicationsModals";
 import { toast } from "react-hot-toast";
@@ -17,7 +17,7 @@ const YourProjects = () => {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
   const navigate = useNavigate();
-  const API_URL = API_CONFIG.BASE_URL;
+
 
   const handleViewApplications = async (projectId) => {
     setModalLoading(true);
@@ -26,8 +26,8 @@ const YourProjects = () => {
     setSelectedProjectId(projectId);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(
-        `${API_URL}/api/projects/${projectId}/applications`,
+      const res = await axiosInstance.get(
+        `/api/projects/${projectId}/applications`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSelectedApplications(res.data);
@@ -73,12 +73,7 @@ const YourProjects = () => {
     if (!confirmDelete) return;
 
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`${API_URL}/api/projects/${projectId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      toast.success("Project deleted successfully!");   
+      await axiosInstance.delete(`/api/projects/${projectId}`);
       fetchYourProjects(); // Refresh the list
     } catch (error) {
       console.error("Error deleting project:", error);

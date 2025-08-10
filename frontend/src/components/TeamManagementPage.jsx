@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+
 import { toast } from 'react-hot-toast';
-import API_CONFIG from '../config/api';
+
+import axiosInstance from '../utils/axios';
 
 const TeamManagementPage = () => {
   const { projectId } = useParams();
@@ -11,8 +12,7 @@ const TeamManagementPage = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const token = localStorage.getItem('token');
-  const API_URL = API_CONFIG.BASE_URL; // Use the API base URL from config
-  const SOCKET_URL = API_CONFIG.SOCKET_URL; // Use the socket URL from config
+  
 
   useEffect(() => {
     fetchTeamData();
@@ -21,9 +21,8 @@ const TeamManagementPage = () => {
 
   const fetchUserData = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Change this line:
+      const response = await axiosInstance.get('/api/auth/profile');
       setUser(response.data);
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -32,9 +31,8 @@ const TeamManagementPage = () => {
 
   const fetchTeamData = async () => {
     try {
-      const response = await axios.get(`${API_URL}/api/projects/${projectId}/team`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Change this line:
+      const response = await axiosInstance.get(`/api/projects/${projectId}/team`);
       setTeamData(response.data);
     } catch (error) {
       console.error('Error fetching team data:', error);
@@ -51,14 +49,11 @@ const TeamManagementPage = () => {
     }
 
     try {
-      await axios.post(
-        `${API_URL}/api/projects/${projectId}/remove-member`,
-        { memberId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      
+      await axiosInstance.post(`/api/projects/${projectId}/remove-member`, { memberId });
       
       toast.success(`${memberName} has been removed from the team`);
-      fetchTeamData(); // Refresh team data
+      fetchTeamData();
     } catch (error) {
       console.error('Error removing member:', error);
       toast.error(error.response?.data?.message || 'Failed to remove member');
@@ -71,11 +66,8 @@ const TeamManagementPage = () => {
     }
 
     try {
-      await axios.post(
-        `${API_URL}/api/projects/${projectId}/leave`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // Change this:
+      await axiosInstance.post(`/api/projects/${projectId}/leave`, {});
       
       toast.success('You have left the project');
       navigate('/my-teams');
@@ -90,14 +82,11 @@ const TeamManagementPage = () => {
     if (!newRole || newRole === currentRole) return;
 
     try {
-      await axios.put(
-        `${API_URL}/api/projects/${projectId}/update-role`,
-        { memberId, newRole },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      // Change this:
+      await axiosInstance.put(`/api/projects/${projectId}/update-role`, { memberId, newRole });
       
       toast.success('Role updated successfully');
-      fetchTeamData(); // Refresh team data
+      fetchTeamData();
     } catch (error) {
       console.error('Error updating role:', error);
       toast.error(error.response?.data?.message || 'Failed to update role');

@@ -1,12 +1,13 @@
-import axios from "axios";
+
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ProjectCard from "./ProjectCard";
 
 import Navbar from "./Navbar";
 
-import API_CONFIG from '../config/api';
-const API_URL = API_CONFIG.BASE_URL;
+
+import axiosInstance from "../utils/axios";
+
 
 const HomePage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -29,7 +30,7 @@ const HomePage = () => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${API_URL}/api/projects`);
+        const response = await axiosInstance.get(`/api/projects`);
         setProjects(response.data.data);
         setLoading(false);
       } catch (error) {

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import axios from 'axios'; // Import axios
+
 import { useNavigate } from "react-router-dom";
-import API_CONFIG from "../config/api";
+
 
 const CreateProjectPage = () => {
   const [formData, setFormData] = useState({
@@ -10,8 +10,7 @@ const CreateProjectPage = () => {
     requiredRoles: [],
     tags: [],
   });
-  const API_URL=API_CONFIG.BASE_URL; // Use the API base URL from config
-  const SOCKET_URL=API_CONFIG.SOCKET_URL; // Use the socket URL from config
+
 
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -34,18 +33,8 @@ const CreateProjectPage = () => {
     e.preventDefault();
     setError(null); 
     try{
-      const token=localStorage.getItem("token");
-
-      const response=await axios.post(
-        `${API_URL}/api/projects`,  // Backend API endpoint
-        formData,
-        {
-          headers:{
-            Authorization: `Bearer ${token}`,
-            "Content-Type":"application/json"
-          },
-        }
-      );
+    
+      const response = await axiosInstance.post('/api/projects', formData);
       console.log("response is ",response);
       if (response.status === 201) {
         console.log("Project Created:", response.data);

@@ -4,6 +4,7 @@ import axios from "axios";
 import PropTypes from "prop-types";
 
 import API_CONFIG from '../config/api';
+import axiosInstance from "../utils/axios";
 
 const SOCKET_URL = API_CONFIG.SOCKET_URL;
 
@@ -33,7 +34,7 @@ const ChatPage = () => {
 useEffect(() => {
   const fetchPrivateChats = async () => {
     try {
-      const response = await axios.get(`${SOCKET_URL}/api/users/private-chats`, {
+      const response = await axiosInstance.get(`/api/users/private-chats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -110,7 +111,7 @@ useEffect(() => {
 useEffect(() => {
   const loadMessages = async () => {
     try {
-      const response = await axios.get(`${SOCKET_URL}/api/messages/${roomId}`, {
+      const response = await axiosInstance.get(`/api/messages/${roomId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log("Loaded messages for room:", roomId, response.data);
@@ -136,7 +137,7 @@ useEffect(() => {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (search.trim().length > 0) {
-        axios.get(`${SOCKET_URL}/api/users/search?query=${search}`, {
+        axiosInstance.get(`/api/users/search?query=${search}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         .then(res => {
@@ -216,7 +217,7 @@ const handleUserSelect = useCallback(async (user) => {
 
     // Save to backend only if doesn't exist
     try {
-      await axios.post(
+      await axiosInstance.post(
         `${SOCKET_URL}/api/users/private-chats`,
         {
           partnerId: user._id,      

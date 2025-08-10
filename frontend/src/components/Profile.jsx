@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+
 import { toast } from "react-hot-toast";
 import { Link } from 'react-router-dom';
-import API_CONFIG from '../config/api';
+
+import axiosInstance from '../utils/axios';
 
 function Profile() {
   const [user, setUser] = useState({});
@@ -10,8 +11,7 @@ function Profile() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   
-  const API_URL = API_CONFIG.BASE_URL; // Use the API base URL from config
-  const SOCKET_URL = API_CONFIG.SOCKET_URL; // Use the socket URL from config
+
 
   const Badge = ({ children, className = "" }) => (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
@@ -27,16 +27,16 @@ function Profile() {
         setLoading(false);
         return;
       }
-      
-      const response = await axios.get(`${API_URL}/api/users/profile`, {
-        headers: {  
+
+      const response = await axiosInstance.get(`/api/users/profile`, {
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
       });
       
       // Fetch user's projects
-      const projectsResponse = await axios.get(`${API_URL}/api/projects/by-creator`, {
+      const projectsResponse = await axiosInstance.get(`/api/projects/by-creator`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+
 import { toast } from "react-hot-toast";
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
-import API_CONFIG from '../config/api';
+
+import axiosInstance from '../utils/axios';
 
 function ProjectDetails() {
     const [project, setProject] = useState({
         requiredRoles: [],
         tags: [],
     });
-    const API_URL = API_CONFIG.BASE_URL; // Use the API base URL from config
-    const SOCKET_URL = API_CONFIG.SOCKET_URL; // Use the socket URL from config
+   
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -38,8 +38,8 @@ function ProjectDetails() {
         try {
             const token = localStorage.getItem('token');
             if (!token) return;
-            
-            const response = await axios.get(`${API_URL}/api/auth/profile`, {
+
+            const response = await axiosInstance.get(`/api/auth/profile`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setUser(response.data);
@@ -69,7 +69,7 @@ function ProjectDetails() {
                 return;
             }
 
-            const response = await axios.post(`${API_URL}/api/projects/${projectId}/applicants`, applicationData);
+            const response = await axiosInstance.post(`/api/projects/${projectId}/applicants`, applicationData);
             console.log(response.data);
             
             // Clear form fields and close popup
@@ -105,7 +105,7 @@ function ProjectDetails() {
     useEffect(() => {
         const fetchProject = async () => {
             try {
-                const response = await axios.get(`${API_URL}/api/projects/${projectId}`);
+                const response = await axiosInstance.get(`/api/projects/${projectId}`);
                 setProject(response.data);
             } catch (error) {
                 setError("Failed to load project");

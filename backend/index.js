@@ -14,6 +14,15 @@ const User = require('./models/user');
 const Message = require('./models/message');
 const messageRoutes = require('./routes/messageRoutes');
 require('./models/applicant');
+// Update CORS configuration around line 15-20
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.CORS_ORIGIN, /\.vercel\.app$/]
+    : ["http://localhost:3000", "http://localhost:5173"],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
 
 dotenv.config(); // ✅ .env file loaded
 

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import API_URL from '../../config';
-import AssignRoleModal from './AssignedRoleModal'
+import AssignRoleModal from './AssignedRoleModal';
+import axiosInstance from '../../utils/axios';
 
 const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicationHandled }) => {
   const [loading, setLoading] = useState(false);
@@ -10,7 +9,6 @@ const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicat
     isOpen: false,
     application: null,
   });
-  const token = localStorage.getItem('token');
 
   // Step 1: This function is called when the "Accept" button is clicked.
   // It opens the new modal to ask for a role.
@@ -33,21 +31,15 @@ const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicat
 
     setLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/api/projects/${projectId}/accept-application`,
-        { applicationId: application._id, assignedRole },
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
-        }
+      await axiosInstance.post(
+        `/api/projects/${projectId}/accept-application`,
+        { applicationId: application._id, assignedRole }
       );
 
       toast.success(`${application.name} has been added to the team!`);
-      
+
       setRoleModalState({ isOpen: false, application: null }); // Close the role modal
-      
+
       if (onApplicationHandled) {
         onApplicationHandled(); // Refresh the data
       }
@@ -60,7 +52,7 @@ const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicat
     }
   };
 
-  // The reject handler remains largely the same
+  // The reject handler with corrected axios usage
   const handleReject = async (applicationId, applicantName) => {
     if (!projectId) {
       toast.error('Project ID is missing');
@@ -69,15 +61,9 @@ const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicat
 
     setLoading(true);
     try {
-      await axios.post(
-        `${API_URL}/api/projects/${projectId}/reject-application`,
-        { applicationId },
-        { 
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          } 
-        }
+      await axiosInstance.post(
+        `/api/projects/${projectId}/reject-application`,
+        { applicationId }
       );
 
       toast.success(`Application from ${applicantName} has been rejected.`);
@@ -96,7 +82,7 @@ const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicat
 
   if (!isOpen) return null;
   
-  // Guard clause for missing projectId remains useful
+  // Guard clause for missing projectId
   if (!projectId) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -147,21 +133,67 @@ const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicat
                 <div key={app._id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      {/* ... All the application detail fields like name, email, skills etc. ... */}
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-lg text-gray-800">{app.name}</h3>
                         <span className="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
                           {app.areaOfExpertise}
                         </span>
                       </div>
-                      <p className="text-gray-600 mb-2">{app.email}</p>
-                      {/* Other fields like skills, github, etc. would go here */}
-                      <div className="mb-2">
-                          <span className="text-sm font-medium text-gray-700">Application: </span>
-                          <p className="text-sm text-gray-600 mt-1">{app.description}</p>
-                      </div>
+                      
+                      <p className="text-gray-600 mb-2">📧 {app.email}</p>
+                      
+                      {app.skills && app.skills.length > 0 && (
+                        <div className="mb-2">
+                          <span className="text-sm font-medium text-gray-700">Skills: </span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {app.skills.map((skill, index) => (
+                              <span key={index} className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {app.githubProfile && (
+                        <p className="text-gray-600 mb-2">
+                          <span className="text-sm font-medium">GitHub: </span>
+                          <a 
+                            href={app.githubProfile} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            {app.githubProfile}
+                          </a>
+                        </p>
+                      )}
+                      
+                      {app.portfolioUrl && (
+                        <p className="text-gray-600 mb-2">
+                          <span className="text-sm font-medium">Portfolio: </span>
+                          <a 
+                            href={app.portfolioUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            {app.portfolioUrl}
+                          </a>
+                        </p>
+                      )}
+                      
+                      {app.description && (
+                        <div className="mb-2">
+                          <span className="text-sm font-medium text-gray-700">Application Message: </span>
+                          <p className="text-sm text-gray-600 mt-1 bg-white p-2 rounded border-l-4 border-blue-200">
+                            {app.description}
+                          </p>
+                        </div>
+                      )}
+                      
                       <div className="text-xs text-gray-400 mt-2">
-                          Applied on: {new Date(app.createdAt || Date.now()).toLocaleDateString()}
+                        Applied on: {new Date(app.createdAt || Date.now()).toLocaleDateString()}
                       </div>
                     </div>
                     
@@ -169,18 +201,18 @@ const ApplicationModal = ({ isOpen, onClose, applications, projectId, onApplicat
                       <button
                         onClick={() => handleAcceptClick(app)}
                         disabled={loading || roleModalState.isOpen}
-                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
                         title={`Accept ${app.name}'s application`}
                       >
-                        Accept
+                        {loading && roleModalState.application?._id === app._id ? 'Processing...' : 'Accept'}
                       </button>
                       <button
                         onClick={() => handleReject(app._id, app.name)}
                         disabled={loading || roleModalState.isOpen}
-                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
                         title={`Reject ${app.name}'s application`}
                       >
-                        {loading && !roleModalState.isOpen ? '...' : 'Reject'}
+                        {loading && !roleModalState.isOpen ? 'Processing...' : 'Reject'}
                       </button>
                     </div>
                   </div>

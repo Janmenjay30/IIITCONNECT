@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-import API_CONFIG from '../config/api';
+
 import axiosInstance from '../utils/axios';
 import toast from "react-hot-toast";
 
