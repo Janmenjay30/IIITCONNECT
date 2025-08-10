@@ -3,6 +3,7 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const authMiddleware = require('../middleware/authMiddleware');
 const User=require('../models/user');
+const Message = require('../models/message'); // Import Message model
 
 
 // Create or get existing private chat
