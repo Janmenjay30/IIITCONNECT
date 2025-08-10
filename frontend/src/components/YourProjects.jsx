@@ -25,11 +25,8 @@ const YourProjects = () => {
     setModalOpen(true);
     setSelectedProjectId(projectId);
     try {
-      const token = localStorage.getItem("token");
-      const res = await axiosInstance.get(
-        `/api/projects/${projectId}/applications`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      
+      const res = await axiosInstance.get(`/api/projects/${projectId}/applications`);
       setSelectedApplications(res.data);
     } catch (err) {
       setModalError("Failed to load applications.");
@@ -51,12 +48,8 @@ const YourProjects = () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem("token");
-      const response = await axiosInstance.get(`/api/projects/by-creator`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      
+      const response = await axiosInstance.get(`/api/projects/by-creator`);
       setProjects(response.data);
       console.log("Fetched projects:", response.data);
     } catch (err) {

@@ -14,15 +14,47 @@ const User = require('./models/user');
 const Message = require('./models/message');
 const messageRoutes = require('./routes/messageRoutes');
 require('./models/applicant');
-// Update CORS configuration around line 15-20
+
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.CORS_ORIGIN, /\.vercel\.app$/]
-    : ["http://localhost:3000", "http://localhost:5173"],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://iiitconnect.vercel.app',
+      process.env.CORS_ORIGIN
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
+
+app.use(cors(corsOptions));
+
+// Also update Socket.IO CORS
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173', 
+      'https://iiitconnect.vercel.app',
+      process.env.CORS_ORIGIN
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 dotenv.config(); // ✅ .env file loaded
 
@@ -49,21 +81,19 @@ db()
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: [
+      'http://localhost:3000',
+      'http://localhost:5173', 
+      'https://iiitconnect.vercel.app',
+      process.env.CORS_ORIGIN
+    ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
-// Socket.IO setup
-const io = socketIO(server, {
-  cors: {
-    origin: "http://localhost:5173",
-    credentials: true,
-    methods: ["GET", "POST"]
-  }
-});
+
 
 // Socket.IO Auth Middleware
 io.use(async (socket, next) => {
