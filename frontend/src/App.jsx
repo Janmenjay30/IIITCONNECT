@@ -13,41 +13,39 @@ import ShowUser from "./testing/ShowUser";
 import { Toaster } from "react-hot-toast";
 import TeamManagementPage from "./components/TeamManagementPage";
 import MyTeamsDashboard from "./components/MyTeamsDashboard";
-import ChatHub from "./components/ChatHub"; // Import ChatHub component
+import ChatHub from "./components/ChatHub";
 import ChatContainer from "./components/ChatContainer";
-
 
 const App = () => {
   return (
     <Router>
       <Layout>
-        <Toaster />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/projects/:projectId" element={<ProjectDetails />} />
           <Route path="/your-projects" element={<YourProjects />} />
           <Route path="/profile" element={<Profile />} />
-        
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/create-project" element={<CreateProjectPage />} />
           <Route path="/showUser" element={<ShowUser/>}/>
           <Route path="/projects/:projectId/team" element={<TeamManagementPage />} />
           <Route path="/my-teams" element={<MyTeamsDashboard />} />
-          <Route path="/chat" element={<ChatHub />} />
-          <Route path="/chat-room" element={<ChatPage />} />
+          
+          {/* ✅ FIXED: Single chat route using ChatContainer */}
           <Route path="/chat" element={<ChatContainer />} />
+          
+          {/* Optional: Keep separate chat-room route if needed */}
+          <Route path="/chat-room" element={<ChatPage />} />
         </Routes>
 
-
-
-        {/* Toast notifications */}
+        {/* ✅ FIXED: Single Toaster */}
         <Toaster
           position="top-right"
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#363636',
+              background: '#363736',
               color: '#fff',
             },
             success: {

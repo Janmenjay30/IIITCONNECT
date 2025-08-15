@@ -103,20 +103,21 @@ const ChatHub = () => {
     }
   };
 
-  const openProjectChat = (projectId, projectTitle) => {
-  navigate(`/chat-room?project=${projectId}`);
+// Keep these functions as they are (using /chat route):
+const openProjectChat = (projectId, projectTitle) => {
+  navigate(`/chat?project=${projectId}`);
 };
 
 const openGlobalChat = () => {
-  navigate(`/chat-room?room=global`);
+  navigate(`/chat?room=global`);
 };
 
 const openAnnouncementsChat = () => {
-  navigate(`/chat-room?room=announcements`);
+  navigate(`/chat?room=announcements`);
 };
 
 const openPrivateChat = async (partnerId, partnerName) => {
-  navigate(`/chat-room?private=${partnerId}&name=${encodeURIComponent(partnerName)}`);
+  navigate(`/chat?private=${partnerId}&name=${encodeURIComponent(partnerName)}`);
 };
 
 const startPrivateChat = async (partnerId, partnerName) => {
@@ -126,13 +127,11 @@ const startPrivateChat = async (partnerId, partnerName) => {
     });
 
     toast.success(`Started chat with ${partnerName}`);
-    
-    // Navigate to the chat room (not chat hub)
-    navigate(`/chat-room?private=${partnerId}&name=${encodeURIComponent(partnerName)}`);
+    navigate(`/chat?private=${partnerId}&name=${encodeURIComponent(partnerName)}`);
     
   } catch (error) {
     if (error.response?.status === 200) {
-      navigate(`/chat-room?private=${partnerId}&name=${encodeURIComponent(partnerName)}`);
+      navigate(`/chat?private=${partnerId}&name=${encodeURIComponent(partnerName)}`);
     } else {
       console.error('Error starting private chat:', error);
       toast.error('Failed to start private chat');
