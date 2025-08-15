@@ -12,6 +12,9 @@ import RegisterPage from "./components/Register";
 import ShowUser from "./testing/ShowUser";
 import { Toaster } from "react-hot-toast";
 import TeamManagementPage from "./components/TeamManagementPage";
+import MyTeamsDashboard from "./components/MyTeamsDashboard";
+import ChatHub from "./components/ChatHub"; // Import ChatHub component
+import ChatContainer from "./components/ChatContainer";
 
 
 const App = () => {
@@ -24,13 +27,38 @@ const App = () => {
           <Route path="/projects/:projectId" element={<ProjectDetails />} />
           <Route path="/your-projects" element={<YourProjects />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/chat" element={<ChatPage />} />
+        
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/create-project" element={<CreateProjectPage />} />
           <Route path="/showUser" element={<ShowUser/>}/>
           <Route path="/projects/:projectId/team" element={<TeamManagementPage />} />
+          <Route path="/my-teams" element={<MyTeamsDashboard />} />
+          <Route path="/chat" element={<ChatHub />} />
+          <Route path="/chat-room" element={<ChatPage />} />
+          <Route path="/chat" element={<ChatContainer />} />
         </Routes>
+
+
+
+        {/* Toast notifications */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              theme: {
+                primary: 'green',
+                secondary: 'black',
+              },
+            },
+          }}
+        />
       </Layout>
     </Router>
   );

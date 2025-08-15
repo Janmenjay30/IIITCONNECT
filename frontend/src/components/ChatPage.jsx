@@ -1,374 +1,421 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
-import { io } from "socket.io-client";
-import axios from "axios";
-import PropTypes from "prop-types";
-
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import io from 'socket.io-client';
+import axiosInstance from '../utils/axios';
 import API_CONFIG from '../config/api';
-import axiosInstance from "../utils/axios";
+import { toast } from 'react-hot-toast';
 
 const SOCKET_URL = API_CONFIG.SOCKET_URL;
 
-const PUBLIC_CHANNELS = [
-  { id: "global", name: "Global" },
-  { id: "announcements", name: "Announcements" }
-];
-
 const ChatPage = () => {
-  // State management
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const projectId = searchParams.get('project');
+  
+  const [socket, setSocket] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [users, setUsers] = useState([]);
-  const [privateChats, setPrivateChats] = useState([]);
-  const [showUserList, setShowUserList] = useState(false);
-  const [roomId, setRoomId] = useState("global");
-  const [currentChat, setCurrentChat] = useState(PUBLIC_CHANNELS[0]);
-  const [connectionStatus, setConnectionStatus] = useState("disconnected");
-  const [error, setError] = useState(null);
-  
-  const socketRef = useRef(null);
-  const myId = localStorage.getItem("userId");
-  const token = localStorage.getItem("token");
+  const [newMessage, setNewMessage] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [project, setProject] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [chatType, setChatType] = useState('project'); // 'project' or 'private'
+  const [activeRoom, setActiveRoom] = useState(null);
 
-  // Fetch private chats on mount
+  // Initialize chat based on project parameter
+  // In ChatPage.jsx, update the useEffect to handle different room types:
 useEffect(() => {
-  const fetchPrivateChats = async () => {
+  const initializeChat = async () => {
     try {
-      const response = await axiosInstance.get(`/api/users/private-chats`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Remove duplicates based on partnerId
-      const uniqueChats = response.data.filter((chat, index, self) => 
-        index === self.findIndex(c => c.partnerId._id === chat.partnerId._id)
-      );
-      
-      setPrivateChats(uniqueChats);
-      console.log("Private chats fetched successfully:", uniqueChats);
-    } catch (err) {
-      console.error("Failed to fetch private chats:", err);
-      setError("Failed to load chat history");
+      const projectId = searchParams.get('project');
+      const room = searchParams.get('room');
+      const privateUserId = searchParams.get('private');
+      const privateName = searchParams.get('name');
+
+      if (projectId) {
+        await loadProjectChat(projectId);
+      } else if (room) {
+        await loadGlobalChat(room);
+      } else if (privateUserId) {
+        await loadPrivateChat(privateUserId, privateName);
+      } else {
+        navigate('/chat'); // Redirect to chat hub
+      }
+    } catch (error) {
+      console.error('Error initializing chat:', error);
+      toast.error('Failed to initialize chat');
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (token) {
-    fetchPrivateChats();
+  initializeChat();
+}, [projectId, searchParams]);
+
+// Add these new functions:
+const loadGlobalChat = async (room) => {
+  try {
+    const userResponse = await axiosInstance.get('/api/auth/profile');
+    setCurrentUser(userResponse.data);
+
+    setActiveRoom(room);
+    setChatType('global');
+    setProject({ title: room === 'global' ? 'Global Chat' : 'Announcements' });
+
+    await loadMessages(room);
+    initializeSocket(room);
+  } catch (error) {
+    console.error('Error loading global chat:', error);
+    toast.error('Failed to load chat');
   }
-}, [token]);
-
-  // Socket.IO connection and event handling
-  useEffect(() => {
-    if (!token) {
-      setError("Authentication required. Please login.");
-      return;
-    }
-
-    // Initialize socket connection
-    socketRef.current = io(SOCKET_URL, {
-      auth: { token },
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
-
-    // Connection events
-    socketRef.current.on("connect", () => {
-      setConnectionStatus("connected");
-      console.log("Connected to Socket.IO server");
-      socketRef.current.emit("join room", roomId);
-    });
-
-    socketRef.current.on("disconnect", () => {
-      setConnectionStatus("disconnected");
-    });
-
-    socketRef.current.on("connect_error", (err) => {
-      console.error("Connection error:", err);
-      setError("Connection failed. Trying to reconnect...");
-      setConnectionStatus("error");
-    });
-
-    // Message handling
-    socketRef.current.on("chat message", (msg) => {
-      setMessages((prev) => [...prev, msg]);
-    });
-
-    // Error handling
-    socketRef.current.on("error", (err) => {
-      console.error("Socket error:", err);
-      setError(err.message);
-    });
-
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  }, [token]);
-
-  // Load messages when room changes
-  // Load messages when room changes
-useEffect(() => {
-  const loadMessages = async () => {
-    try {
-      const response = await axiosInstance.get(`/api/messages/${roomId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      console.log("Loaded messages for room:", roomId, response.data);
-      setMessages(response.data);
-    } catch (err) {
-      console.error("Failed to load messages for room:", roomId, err);
-      // Don't show error for new private chats that have no messages yet
-      if (err.response?.status !== 404) {
-        setError("Failed to load messages");
-      } else {
-        setMessages([]); // Clear messages for new chat
-      }
-    }
-  };
-
-  if (socketRef.current?.connected && roomId) {
-    socketRef.current.emit("join room", roomId);
-    loadMessages();
-  }
-}, [roomId, token]);
-
-  // User search handler with debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (search.trim().length > 0) {
-        axiosInstance.get(`/api/users/search?query=${search}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        .then(res => {
-          setUsers(res.data);
-          setShowUserList(true);
-        })
-        .catch(err => {
-          console.error("Search failed:", err);
-          setError("Failed to search users");
-        });
-      } else {
-        setShowUserList(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [search, token]);
-
-  // Message sending handler
-  const handleSend = useCallback((e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    
-    if (!socketRef.current?.connected) {
-      setError("Not connected to chat server");
-      return;
-    }
-
-    try {
-      socketRef.current.emit("chat message", { 
-        text: input, 
-        room: roomId,
-        username: myId // Assuming myId is the username or identifier
-      });
-      setInput("");
-    } catch (err) {
-      console.error("Failed to send message:", err);
-      setError("Failed to send message");
-    }
-  }, [input, roomId]);
-
-  // Channel selection handler
-  const handleChannelSelect = useCallback((channel) => {
-    setRoomId(channel.id);
-    setCurrentChat(channel);
-  }, []);
-
-// User selection handler
-const handleUserSelect = useCallback(async (user) => {
-  if (!myId) {
-    setError("User session expired. Please login again.");
-    return;
-  }
-  
-  const privateRoomId = [myId, user._id].sort().join("_");
-  console.log("My ID:", myId);
-  console.log("Selected user ID:", user._id);
-  console.log("Starting private chat with room ID:", privateRoomId);
-  
-  setRoomId(privateRoomId);
-  setCurrentChat(user);
-  setShowUserList(false);
-  setSearch("");
-
-  // Check if chat already exists before adding to state
-  const existingChat = privateChats.find(chat => 
-    chat.partnerId._id === user._id || chat.roomId === privateRoomId
-  );
-  
-  if (!existingChat) {
-    // Update private chats list only if doesn't exist
-    setPrivateChats(prev => [...prev, { 
-      _id: user._id, 
-      partnerId: user, 
-      roomId: privateRoomId 
-    }]);
-
-    // Save to backend only if doesn't exist
-    try {
-      await axiosInstance.post(
-        `${SOCKET_URL}/api/users/private-chats`,
-        {
-          partnerId: user._id,      
-          roomId: privateRoomId
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (err) {
-      console.error("Failed to save chat:", err);
-      // Don't show error if chat already exists
-      if (err.response?.status !== 409) {
-        setError("Failed to start private chat");
-      }
-    }
-  }
-}, [myId, token, privateChats]); 
-
-  // Render methods
-  
-const renderMessage = (msg, idx) => (
-  <div key={`${msg._id || idx}`} className="mb-2">
-    <span className="font-semibold text-blue-700">
-      {msg.sender?.name || "User"}: {/* Change msg.username to msg.sender.name */}
-    </span>
-    <span className="ml-2">{msg.text}</span>
-  </div>
-);
-
-  const renderChannel = (channel) => (
-    <div
-      key={channel.id}
-      className={`p-2 rounded cursor-pointer ${
-        currentChat.id === channel.id ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
-      }`}
-      onClick={() => handleChannelSelect(channel)}
-    >
-      {channel.name}
-    </div>
-  );
-
-  const renderUser = (chat) => ( // Changed parameter name for clarity
-  <div
-    key={chat._id}
-    className={`p-2 rounded cursor-pointer ${
-      currentChat._id === chat.partnerId._id ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"
-    }`}
-    onClick={() => handleUserSelect(chat.partnerId)} // Pass the partnerId object
-  >
-    {chat.partnerId.name || chat.partnerId.email}
-  </div>
-);
-
-  return (
-    <div className="min-h-screen flex bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-1/3 bg-white border-r border-gray-200">
-        <div className="p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-800">Chats</h2>
-          {connectionStatus !== "connected" && (
-            <div className={`text-sm ${
-              connectionStatus === "error" ? "text-red-500" : "text-yellow-500"
-            }`}>
-              Status: {connectionStatus}
-            </div>
-          )}
-        </div>
-        
-        <div className="p-4">
-          <h3 className="text-gray-600 font-semibold mb-2">Public Channels</h3>
-          {PUBLIC_CHANNELS.map(renderChannel)}
-
-          <h3 className="text-gray-600 font-semibold mt-4 mb-2">Private Chats</h3>
-          {privateChats.map(renderUser)}
-
-          <div className="mt-4">
-            <input
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search user..."
-            />
-            {showUserList && (
-              <div className="bg-white border rounded shadow mt-2">
-                {users.map(user => (
-                  <div
-                    key={user._id}
-                    className="p-2 hover:bg-blue-100 cursor-pointer"
-                    onClick={() => handleUserSelect(user)}
-                  >
-                    {user.name} ({user.email})
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Chat Window */}
-      <div className="w-2/3 flex flex-col">
-        <div className="p-4 border-b bg-white">
-          <h2 className="text-xl font-bold text-gray-800">
-            {currentChat.name || currentChat.email}
-          </h2>
-        </div>
-        
-        {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
-            {error}
-            <button 
-              onClick={() => setError(null)}
-              className="float-right font-bold"
-            >
-              &times;
-            </button>
-          </div>
-        )}
-        
-        <div className="flex-1 overflow-y-auto p-4 pt-10 bg-gray-50">
-          {messages.length > 0 ? (
-            messages.map(renderMessage)
-          ) : (
-            <div className="text-gray-500 text-center mt-8">
-              No messages yet. Start the conversation!
-            </div>
-          )}
-        </div>
-        
-        <form onSubmit={handleSend} className="p-4 bg-white border-t flex gap-2">
-          <input
-            className="flex-1 border rounded px-3 py-2 focus:outline-none focus:border-blue-500"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            disabled={connectionStatus !== "connected"}
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition disabled:bg-gray-400"
-            disabled={!input.trim() || connectionStatus !== "connected"}
-          >
-            Send
-          </button>
-        </form>
-      </div>
-    </div>
-  );
 };
 
-ChatPage.propTypes = {
-  // Add prop types if needed
+const loadPrivateChat = async (partnerId, partnerName) => {
+  try {
+    const userResponse = await axiosInstance.get('/api/auth/profile');
+    setCurrentUser(userResponse.data);
+
+    const roomId = `private_${[userResponse.data._id, partnerId].sort().join('_')}`;
+    setActiveRoom(roomId);
+    setChatType('private');
+    setProject({ title: `Chat with ${decodeURIComponent(partnerName)}` });
+
+    await loadMessages(roomId);
+    initializeSocket(roomId);
+  } catch (error) {
+    console.error('Error loading private chat:', error);
+    toast.error('Failed to load private chat');
+  }
+};
+// Add this function after the loadPrivateChat function:
+const loadProjectChat = async (projectId) => {
+  try {
+    // Get current user
+    const userResponse = await axiosInstance.get('/api/auth/profile');
+    const userData = userResponse.data;
+    setCurrentUser(userData);
+
+    // Get project details
+    const projectResponse = await axiosInstance.get(`/api/projects/${projectId}`);
+    const projectData = projectResponse.data;
+    setProject(projectData);
+
+    // Check membership
+    const isCreator = projectData.creator._id === userData._id;
+    const isMember = projectData.teamMembers.some(member => 
+      member.userId._id === userData._id
+    );
+
+    if (!isCreator && !isMember) {
+      toast.error('You are not a member of this project');
+      navigate('/chat');
+      return;
+    }
+
+    // Process team members correctly
+    const teamMemberUsers = projectData.teamMembers
+      .filter(member => member.userId._id !== projectData.creator._id) // Remove creator from team members
+      .map(member => ({
+        _id: member.userId._id,
+        name: member.userId.name,
+        email: member.userId.email,
+        profilePicture: member.userId.profilePicture || '',
+        role: member.role,
+        joinedAt: member.joinedAt,
+        status: member.status,
+        isCreator: false
+      }));
+
+    // Create creator object
+    const creatorObj = {
+      _id: projectData.creator._id,
+      name: projectData.creator.name,
+      email: projectData.creator.email,
+      profilePicture: projectData.creator.profilePicture || '',
+      role: 'Project Lead',
+      isCreator: true
+    };
+
+    // Set all team members (creator + non-duplicate members)
+    const allMembers = [creatorObj, ...teamMemberUsers];
+    setTeamMembers(allMembers);
+
+    // Set room and chat type
+    setActiveRoom(`project_${projectId}`);
+    setChatType('project');
+
+    // Load existing messages
+    await loadMessages(`project_${projectId}`);
+
+    // Initialize socket connection
+    initializeSocket(`project_${projectId}`);
+
+  } catch (error) {
+    console.error('Error loading project chat:', error);
+    toast.error('Failed to load project chat');
+    navigate('/chat');
+  }
+};
+
+  // Load messages for a room
+  const loadMessages = async (roomId) => {
+    try {
+      const response = await axiosInstance.get(`/api/messages/${roomId}`);
+      const messages = response.data.messages || response.data;
+      setMessages(messages);
+      console.log(`Loaded ${messages.length} messages for room: ${roomId}`);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      setMessages([]);
+      toast.success('Starting a new team chat!');
+    }
+  };
+
+  // Initialize socket connection
+  const initializeSocket = (roomId) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast.error('Authentication required');
+      navigate('/login');
+      return;
+    }
+
+    const newSocket = io(SOCKET_URL, {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Connected to server');
+      setIsConnected(true);
+      newSocket.emit('join room', roomId);
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from server');
+      setIsConnected(false);
+    });
+
+    newSocket.on('chat message', (message) => {
+      console.log('Received message:', message);
+      setMessages(prev => [...prev, message]);
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      toast.error('Failed to connect to chat');
+    });
+
+    setSocket(newSocket);
+  };
+
+  // Send message
+  const sendMessage = (e) => {
+    e.preventDefault();
+    if (newMessage.trim() && socket && activeRoom) {
+      const messageData = {
+        text: newMessage,
+        room: activeRoom,
+        timestamp: new Date().toISOString()
+      };
+      
+      socket.emit('chat message', messageData);
+      setNewMessage('');
+    }
+  };
+
+  // Cleanup socket on unmount
+  useEffect(() => {
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [socket]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    const messagesContainer = document.querySelector('.messages-container');
+    if (messagesContainer) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  }, [messages]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <div className="w-1/4 bg-white shadow-lg relative">
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800">
+              {chatType === 'project' ? 'Project Chat' : 'Messages'}
+            </h2>
+            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} 
+                 title={isConnected ? 'Connected' : 'Disconnected'}>
+            </div>
+          </div>
+          
+          {project && (
+            <div className="mt-3">
+              <h3 className="font-medium text-gray-700">{project.title}</h3>
+              <p className="text-sm text-gray-500">{teamMembers.length} members</p>
+            </div>
+          )}
+        </div>
+
+        {/* Team Members List */}
+        {chatType === 'project' && teamMembers.length > 0 && (
+          <div className="p-4 flex-1 overflow-y-auto">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Team Members</h4>
+            <div className="space-y-3">
+              {teamMembers.map((member) => (
+                <div key={member._id} className="flex items-center gap-3">
+                  <div className={`w-10 h-10 ${member.isCreator ? 'bg-purple-500' : 'bg-blue-500'} rounded-full flex items-center justify-center text-white text-sm font-medium shadow-sm`}>
+                    {member?.name && typeof member.name === 'string' && member.name.length > 0 
+                      ? member.name.charAt(0).toUpperCase() 
+                      : member?.email 
+                        ? member.email.charAt(0).toUpperCase()
+                        : '?'
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {member?.name && typeof member.name === 'string' && member.name.trim() 
+                        ? member.name 
+                        : member?.email 
+                          ? member.email.split('@')[0] 
+                          : 'Unknown User'
+                      }
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {member.role || 'Team Member'}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Back Button */}
+        <div className="absolute bottom-4 left-4">
+          <button
+            onClick={() => navigate('/chat')}
+            className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            ← Back to Chat Hub
+          </button>
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Chat Header */}
+        <div className="bg-white shadow-sm p-4 border-b">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold text-gray-800">
+                {project ? `${project.title} - Team Chat` : 'Chat'}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {isConnected ? 'Connected' : 'Disconnected'} • {messages.length} messages
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 messages-container">
+          {messages.length === 0 ? (
+            <div className="text-center text-gray-500 mt-16">
+              <div className="text-6xl mb-4">💬</div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Welcome to {project?.title} team chat!
+              </h3>
+              <p className="text-gray-500 mb-6">
+                This is where your team collaborates and shares updates.
+              </p>
+              <div className="bg-blue-50 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-blue-700 text-sm">
+                  💡 Start by introducing yourself or sharing project updates!
+                </p>
+              </div>
+            </div>
+          ) : (
+            messages.map((message, index) => (
+              <div key={message._id || index} className={`flex ${
+                message.isSystemMessage 
+                  ? 'justify-center' 
+                  : message.sender?._id === currentUser?._id ? 'justify-end' : 'justify-start'
+              }`}>
+                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  message.isSystemMessage
+                    ? 'bg-gray-100 text-gray-600 text-center text-sm border-2 border-dashed border-gray-300'
+                    : message.sender?._id === currentUser?._id 
+                      ? 'bg-blue-500 text-white shadow-sm' 
+                      : 'bg-white shadow-sm border'
+                }`}>
+                  {!message.isSystemMessage && message.sender?._id !== currentUser?._id && message.sender && (
+                    <div className="text-xs font-medium text-gray-600 mb-1">
+                      {message.sender.name}
+                    </div>
+                  )}
+                  <div className={message.isSystemMessage ? 'text-xs whitespace-pre-line' : 'text-sm'}>
+                    {message.text}
+                  </div>
+                  {!message.isSystemMessage && (
+                    <div className={`text-xs mt-1 ${
+                      message.sender?._id === currentUser?._id ? 'text-blue-100' : 'text-gray-400'
+                    }`}>
+                      {new Date(message.createdAt).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Message Input */}
+        <div className="bg-white border-t p-4">
+          <form onSubmit={sendMessage} className="flex gap-3">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder={`Message ${project ? project.title : 'chat'}...`}
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={!isConnected}
+            />
+            <button
+              type="submit"
+              disabled={!newMessage.trim() || !isConnected}
+              className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              Send
+            </button>
+          </form>
+          {!isConnected && (
+            <p className="text-red-500 text-sm mt-2">
+              Disconnected from server. Trying to reconnect...
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ChatPage;

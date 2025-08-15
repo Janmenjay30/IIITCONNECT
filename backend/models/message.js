@@ -1,14 +1,44 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const messageSchema = new mongoose.Schema({
-  room: { type: String, required: true }, // channel id or private room id
-  text: { type: String, required: true },
-  // Reference the user instead of saving their name/ID as a string
-  sender: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  text: {
+    type: String,
+    required: true
   },
-}, { timestamps: true }); // Using timestamps is a bit cleaner
+  sender: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false // Allow null for system messages
+  },
+  room: {
+    type: String,
+    required: true
+  },
+  // For private chats
+  participants: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  partnerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  roomId: {
+    type: String,
+  },
+  isSystemMessage: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-module.exports = mongoose.model("Message", messageSchema);
+// Index for better query performance
+messageSchema.index({ room: 1, createdAt: 1 });
+messageSchema.index({ participants: 1 });
+messageSchema.index({ roomId: 1 });
+
+module.exports = mongoose.model('Message', messageSchema);

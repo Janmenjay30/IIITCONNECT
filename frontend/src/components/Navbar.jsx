@@ -82,6 +82,7 @@ const Navbar = () => {
     { path: "/", label: "Home" },
     { path: "/your-projects", label: "Projects" },
     { path: "/chat", label: "Messages" },
+    { path: "/my-teams", label: "My Teams" },
   ];
 
   return (

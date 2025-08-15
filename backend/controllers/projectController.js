@@ -260,7 +260,7 @@ const getProjectById = async (req, res) => {
         console.log("3. Searching for project in database...");
         const project = await Project.findById(projectId)
             .populate('creator', 'name email')
-            .populate('applications')
+            .populate('applications', 'name email skills githubProfile')    
             .populate('teamMembers.userId', 'name email profilePicture')
             .exec();
 

@@ -1,3 +1,4 @@
+const Project = require('./models/project');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -24,18 +25,14 @@ require('./models/applicant');
 const app = express();
 const server = http.createServer(app);
 
-// Debug log for environment variables
-console.log("Node Environment:", process.env.NODE_ENV);
-console.log("CORS Origin:", process.env.CORS_ORIGIN);
-
 // Check for required environment variables
 if (!process.env.MONGO_URI) {
-  console.error('MONGO_URI is not defined in .env file');
+  console.error('❌ MONGO_URI is not defined in .env file');
   process.exit(1);
 }
 
 if (!process.env.JWT_SECRET) {
-  console.error('JWT_SECRET is not defined in .env file');
+  console.error('❌ JWT_SECRET is not defined in .env file');
   process.exit(1);
 }
 
@@ -50,15 +47,12 @@ const corsOptions = {
       'http://localhost:5173',
       'https://iiitconnect.vercel.app',
       process.env.CORS_ORIGIN
-    ].filter(Boolean); // Remove any undefined values
-    
-    console.log('Request origin:', origin);
-    console.log('Allowed origins:', allowedOrigins);
+    ].filter(Boolean);
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.log('Origin not allowed by CORS:', origin);
+      console.log('❌ Origin not allowed by CORS:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -107,56 +101,99 @@ io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
     if (!token) {
-      console.log('❌ No auth token provided for socket connection');
       return next(new Error("Authentication token required"));
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('name email');
+    const user = await User.findById(decoded.id).select('_id name email');
     if (!user) {
-      console.log('❌ User not found for socket connection');
       return next(new Error("User not found"));
     }
 
     socket.user = user;
-    console.log('✅ Socket authenticated for user:', user.name);
+    console.log('✅ Socket authenticated:', user.name);
     next();
   } catch (err) {
-    console.log('❌ Socket authentication error:', err.message);
+    console.log('❌ Socket auth error:', err.message);
     next(new Error("Authentication failed"));
   }
 });
 
 // Socket.IO Event Handlers
 io.on('connection', (socket) => {
-  console.log(`✅ User connected: ${socket.user.name} (${socket.id})`);
+  console.log(`✅ User connected: ${socket.user.name}`);
 
   // Join room handler
   socket.on('join room', (roomId) => {
     socket.join(roomId);
+    socket.emit('joined room', { room: roomId });
     console.log(`📍 ${socket.user.name} joined room: ${roomId}`);
   });
 
-  // Chat message handler
-  socket.on('chat message', async (msg) => {
-    try {
-      const messageData = {
-        text: msg.text,
-        sender: socket.user._id,
-        room: msg.room,
-        createdAt: new Date(),
-      };
+// Replace the incomplete chat message handler with this complete version:
+socket.on('chat message', async (msg) => {
+  try {
+    console.log(`💬 Message received in room: ${msg.room}`);
 
-      let savedMessage = await Message.create(messageData);
-      savedMessage = await savedMessage.populate('sender', 'name');
+    // Validate room access
+    if (msg.room && msg.room.startsWith('project_')) {
+      // Project chat validation
+      const projectId = msg.room.replace('project_', '');
       
-      console.log(`💬 Message sent in room ${msg.room} by ${socket.user.name}`);
-      io.to(msg.room).emit('chat message', savedMessage);
-    } catch (error) {
-      console.error('❌ Error saving message:', error);
-      socket.emit('error', { message: 'Failed to send message' });
+      const project = await Project.findOne({
+        _id: projectId,
+        $or: [
+          { creator: socket.user._id },
+          { 'teamMembers.userId': socket.user._id }
+        ]
+      }).populate('creator', 'name email').populate('teamMembers.userId', 'name email');
+
+      if (!project) {
+        console.log('❌ Access denied to project chat');
+        socket.emit('error', { message: 'Access denied to this project chat' });
+        return;
+      }
+      
+      console.log(`✅ Project chat access granted for ${socket.user.name}`);
+      
+    } else if (msg.room === 'global' || msg.room === 'announcements') {
+      // Global chats - all authenticated users can access
+      console.log(`✅ Global chat access: ${msg.room} by ${socket.user.name}`);
+      
+    } else if (msg.room && msg.room.startsWith('private_')) {
+      // Private chat validation
+      const roomUsers = msg.room.replace('private_', '').split('_');
+      if (!roomUsers.includes(socket.user._id.toString())) {
+        console.log('❌ Access denied to private chat');
+        socket.emit('error', { message: 'Access denied to this private chat' });
+        return;
+      }
+      
+      console.log(`✅ Private chat access granted for ${socket.user.name}`);
     }
-  });
+
+    // Create and save message
+    const messageData = {
+      text: msg.text,
+      sender: socket.user._id,
+      room: msg.room,
+      createdAt: new Date(),
+      isSystemMessage: false
+    };
+
+    let savedMessage = await Message.create(messageData);
+    savedMessage = await savedMessage.populate('sender', 'name email');
+    
+    console.log(`💾 Message saved and emitting to room: ${msg.room}`);
+    
+    // Emit to all users in the room
+    io.to(msg.room).emit('chat message', savedMessage);
+    
+  } catch (error) {
+    console.error('❌ Error saving message:', error);
+    socket.emit('error', { message: 'Failed to send message' });
+  }
+});
 
   // Leave room handler
   socket.on('leave room', (roomId) => {
@@ -166,7 +203,7 @@ io.on('connection', (socket) => {
 
   // Disconnect handler
   socket.on('disconnect', (reason) => {
-    console.log(`❌ User disconnected: ${socket.user.name} (${socket.id}) - Reason: ${reason}`);
+    console.log(`❌ ${socket.user.name} disconnected: ${reason}`);
   });
 
   // Error handler
@@ -203,7 +240,7 @@ app.use('*', (req, res) => {
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  console.error('❌ Global error handler:', err.stack);
+  console.error('❌ Global error:', err.stack);
   
   // CORS errors
   if (err.message.includes('CORS')) {
@@ -267,9 +304,10 @@ process.on('SIGINT', () => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`📍 Server URL: ${process.env.NODE_ENV === 'production' ? 'https://iiitconnect.onrender.com' : `http://localhost:${PORT}`}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 Socket.IO server initialized`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
 // Export for testing
