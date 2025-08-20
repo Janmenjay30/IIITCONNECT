@@ -54,55 +54,56 @@ const ChatHub = () => {
   };
 
 
-  // ✅ FIXED: Corrected loadChatData function
-  const loadChatData = async () => {
+  // ✅ FIXED: Update loadChatData function
+const loadChatData = async () => {
+  try {
+    setLoading(true);
+    
+    // Get current user
+    const userResponse = await axiosInstance.get('/api/auth/profile');
+    console.log('🔍 ChatHub user response:', userResponse.data);
+    
+    // ✅ FIX: Access user data correctly
+    const userData = userResponse.data.data.user; // Changed from userResponse.data
+    setCurrentUser(userData);
+
+    // Rest of your existing code...
+    const teamsResponse = await axiosInstance.get('/api/users/my-teams');
+    setProjectChats(teamsResponse.data);
+
     try {
-      setLoading(true);
+      const privateChatsResponse = await axiosInstance.get('/api/users/private-chats');
       
-      // Get current user
-      const userResponse = await axiosInstance.get('/api/auth/profile');
-      setCurrentUser(userResponse.data);
-
-      // Get user's project chats
-      const teamsResponse = await axiosInstance.get('/api/users/my-teams');
-      setProjectChats(teamsResponse.data);
-
-      // Get private chats and remove duplicates on frontend as fallback
-      try {
-        const privateChatsResponse = await axiosInstance.get('/api/users/private-chats');
+      const uniqueChats = privateChatsResponse.data.reduce((acc, chat) => {
+        const partnerId = chat.partnerId._id;
+        const existingIndex = acc.findIndex(c => c.partnerId._id === partnerId);
         
-        // Remove duplicates by partner ID (keep the latest)
-        const uniqueChats = privateChatsResponse.data.reduce((acc, chat) => {
-          const partnerId = chat.partnerId._id;
-          const existingIndex = acc.findIndex(c => c.partnerId._id === partnerId);
-          
-          if (existingIndex === -1) {
-            acc.push(chat);
-          } else {
-            const existing = acc[existingIndex];
-            const current = chat;
-            if (new Date(current.lastMessageAt || 0) > new Date(existing.lastMessageAt || 0)) {
-              acc[existingIndex] = current;
-            }
+        if (existingIndex === -1) {
+          acc.push(chat);
+        } else {
+          const existing = acc[existingIndex];
+          const current = chat;
+          if (new Date(current.lastMessageAt || 0) > new Date(existing.lastMessageAt || 0)) {
+            acc[existingIndex] = current;
           }
-          return acc;
-        }, []);
+        }
+        return acc;
+      }, []);
 
-        setPrivateChats(uniqueChats);
-        
-      } catch (error) {
-        console.log('No private chats found');
-        setPrivateChats([]);
-      }
-
+      setPrivateChats(uniqueChats);
+      
     } catch (error) {
-      console.error('Error loading chat data:', error);
-      toast.error('Failed to load chats');
-    } finally {
-      setLoading(false);
+      console.log('No private chats found');
+      setPrivateChats([]);
     }
-  };
 
+  } catch (error) {
+    console.error('❌ Error loading chat data:', error);
+    toast.error('Failed to load chats');
+  } finally {
+    setLoading(false);
+  }
+};
 // Keep these functions as they are (using /chat route):
 const openProjectChat = (projectId, projectTitle) => {
   navigate(`/chat?project=${projectId}`);

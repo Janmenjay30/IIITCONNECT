@@ -15,6 +15,7 @@ import TeamManagementPage from "./components/TeamManagementPage";
 import MyTeamsDashboard from "./components/MyTeamsDashboard";
 import ChatHub from "./components/ChatHub";
 import ChatContainer from "./components/ChatContainer";
+import OTPVerification from "./components/OTPVerification";
 
 const App = () => {
   return (
@@ -31,6 +32,7 @@ const App = () => {
           <Route path="/showUser" element={<ShowUser/>}/>
           <Route path="/projects/:projectId/team" element={<TeamManagementPage />} />
           <Route path="/my-teams" element={<MyTeamsDashboard />} />
+          <Route path="/verify-otp" element={<OTPVerification />} />
           
           {/* ✅ FIXED: Single chat route using ChatContainer */}
           <Route path="/chat" element={<ChatContainer />} />

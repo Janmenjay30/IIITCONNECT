@@ -31,8 +31,9 @@ const LoginPage = () => {
 
         if (response.status === 200) {
             console.log("Login Successful:", response.data);
-            localStorage.setItem("token", response.data.token); // Store the token
-            localStorage.setItem("userId", response.data.userId); // Store the userId
+            localStorage.setItem("token", response.data.data.token); // Store the token
+            
+            localStorage.setItem("userId", response.data.data.user.id); // Store the userId
             toast.success("Login successful!");
             navigate("/");
         }

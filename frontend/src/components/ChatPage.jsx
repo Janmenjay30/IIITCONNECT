@@ -53,11 +53,14 @@ useEffect(() => {
   initializeChat();
 }, [projectId, searchParams]);
 
-// Add these new functions:
+// ✅ FIXED: Update loadGlobalChat function
 const loadGlobalChat = async (room) => {
   try {
     const userResponse = await axiosInstance.get('/api/auth/profile');
-    setCurrentUser(userResponse.data);
+    
+    // ✅ FIX: Access user data correctly
+    const userData = userResponse.data.data.user; // Changed from userResponse.data
+    setCurrentUser(userData);
 
     setActiveRoom(room);
     setChatType('global');
@@ -66,17 +69,30 @@ const loadGlobalChat = async (room) => {
     await loadMessages(room);
     initializeSocket(room);
   } catch (error) {
-    console.error('Error loading global chat:', error);
+    console.error('❌ Error loading global chat:', error);
     toast.error('Failed to load chat');
   }
 };
 
+// ✅ FIXED: Update loadPrivateChat function
 const loadPrivateChat = async (partnerId, partnerName) => {
   try {
     const userResponse = await axiosInstance.get('/api/auth/profile');
-    setCurrentUser(userResponse.data);
+    console.log('🔍 Private chat user response:', userResponse.data);
+    
+    // ✅ FIX: Access user data correctly
+    const userData = userResponse.data.data.user; // Changed from userResponse.data
+    console.log('🔍 Private chat user data:', userData);
+    
+    setCurrentUser(userData);
+    
+    const currentUserId = userData._id; // Now correctly accessing _id
+    console.log('🔍 Private chat - Current user ID:', currentUserId);
+    console.log('🔍 Private chat - Partner ID:', partnerId);
 
-    const roomId = `private_${[userResponse.data._id, partnerId].sort().join('_')}`;
+    const roomId = `private_${[currentUserId, partnerId].sort().join('_')}`;
+    console.log('🔍 Generated room ID:', roomId);
+    
     setActiveRoom(roomId);
     setChatType('private');
     setProject({ title: `Chat with ${decodeURIComponent(partnerName)}` });
@@ -84,16 +100,23 @@ const loadPrivateChat = async (partnerId, partnerName) => {
     await loadMessages(roomId);
     initializeSocket(roomId);
   } catch (error) {
-    console.error('Error loading private chat:', error);
+    console.error('❌ Error loading private chat:', error);
     toast.error('Failed to load private chat');
   }
 };
-// Add this function after the loadPrivateChat function:
+
+
+// ✅ FIXED: Update loadProjectChat function
 const loadProjectChat = async (projectId) => {
   try {
     // Get current user
     const userResponse = await axiosInstance.get('/api/auth/profile');
-    const userData = userResponse.data;
+    console.log('🔍 Full userResponse:', userResponse.data); // Debug log
+    
+    // ✅ FIX: Access user data correctly from the nested structure
+    const userData = userResponse.data.data.user; // Changed from userResponse.data
+    console.log('🔍 Extracted userData:', userData); // Debug log
+    
     setCurrentUser(userData);
 
     // Get project details
@@ -101,21 +124,41 @@ const loadProjectChat = async (projectId) => {
     const projectData = projectResponse.data;
     setProject(projectData);
 
-    // Check membership
+    console.log('🔍 Comparing IDs:', {
+      currentUserId: userData._id, // Now correctly accessing _id
+      projectCreatorId: projectData.creator._id,
+      isEqual: userData._id === projectData.creator._id
+    });
+
+    // ✅ FIX: Use correct user ID for comparison
     const isCreator = projectData.creator._id === userData._id;
-    const isMember = projectData.teamMembers.some(member => 
-      member.userId._id === userData._id
-    );
+    const isMember = projectData.teamMembers.some(member => {
+      const memberId = member.userId._id || member.userId;
+      console.log('🔍 Checking member:', {
+        memberId,
+        currentUserId: userData._id,
+        isMatch: memberId === userData._id
+      });
+      return memberId === userData._id;
+    });
+
+    console.log('🔍 Access check:', { isCreator, isMember });
 
     if (!isCreator && !isMember) {
+      console.log('❌ Access denied:', {
+        userID: userData._id,
+        creatorID: projectData.creator._id,
+        teamMembers: projectData.teamMembers.map(m => m.userId._id || m.userId)
+      });
       toast.error('You are not a member of this project');
       navigate('/chat');
       return;
     }
 
+    // Rest of your existing code...
     // Process team members correctly
     const teamMemberUsers = projectData.teamMembers
-      .filter(member => member.userId._id !== projectData.creator._id) // Remove creator from team members
+      .filter(member => member.userId._id !== projectData.creator._id)
       .map(member => ({
         _id: member.userId._id,
         name: member.userId.name,
@@ -127,7 +170,6 @@ const loadProjectChat = async (projectId) => {
         isCreator: false
       }));
 
-    // Create creator object
     const creatorObj = {
       _id: projectData.creator._id,
       name: projectData.creator.name,
@@ -137,22 +179,17 @@ const loadProjectChat = async (projectId) => {
       isCreator: true
     };
 
-    // Set all team members (creator + non-duplicate members)
     const allMembers = [creatorObj, ...teamMemberUsers];
     setTeamMembers(allMembers);
 
-    // Set room and chat type
     setActiveRoom(`project_${projectId}`);
     setChatType('project');
 
-    // Load existing messages
     await loadMessages(`project_${projectId}`);
-
-    // Initialize socket connection
     initializeSocket(`project_${projectId}`);
 
   } catch (error) {
-    console.error('Error loading project chat:', error);
+    console.error('❌ Error loading project chat:', error);
     toast.error('Failed to load project chat');
     navigate('/chat');
   }

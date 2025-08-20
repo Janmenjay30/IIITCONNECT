@@ -44,7 +44,12 @@ const RegisterPage = () => {
         if (response.data.token) {
           localStorage.setItem("token", response.data.token); // Store token in local storage
         }
-        navigate("/login"); // Redirect to the login page
+        // Navigate to OTP verification page
+      navigate('/verify-otp', {
+        state: {
+          email: formData.email
+        }
+      });
       } else {
         // Registration failed
         console.error("Registration Failed:", response.data);

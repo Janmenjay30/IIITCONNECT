@@ -8,15 +8,23 @@ const userSchema = new mongoose.Schema({
   skills: [{ type: String }],
   bio: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
-  // Inside userSchema
-privateChats: [
-  {
-    // Just store the ID of the person you're chatting with
-    partnerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, 
-    // The unique room ID for this private chat
-    roomId: { type: String}, 
+  
+  // ✅ ADD THESE NEW FIELDS FOR OTP VERIFICATION
+  isEmailVerified: { type: Boolean, default: false },
+  accountStatus: { 
+    type: String, 
+    enum: ['pending', 'active', 'suspended'], 
+    default: 'pending' 
   },
-],
+  emailOTP: { type: String, default: null },
+  emailOTPExpires: { type: Date, default: null },
+  
+  privateChats: [
+    {
+      partnerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, 
+      roomId: { type: String}, 
+    },
+  ],
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
 
 userSchema.virtual('projects', {
