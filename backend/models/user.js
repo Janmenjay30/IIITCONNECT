@@ -32,5 +32,19 @@ userSchema.virtual('projects', {
   localField: '_id',
   foreignField: 'creator',
 });
+  
+// Single-field index + unique for email (explicit)
+userSchema.index({ email: 1 }, { unique: true, background: true });
+
+// Multikey index for skills (array field)
+userSchema.index({ skills: 1 }, { background: true });
+
+// Compound index for accountStatus + isEmailVerified
+userSchema.index({ accountStatus: 1, isEmailVerified: 1 }, { background: true });
+
+// Optional: TTL index for OTP expiry to automatically remove expired OTP docs
+// This only works if you want documents to be removed after `emailOTPExpires`. 
+// If you only want to query by expiry time (not auto-delete), don’t add this.
+userSchema.index({ emailOTPExpires: 1 }, { expireAfterSeconds: 0, background: true });
 
 module.exports = mongoose.model("User", userSchema);

@@ -33,7 +33,7 @@ const App = () => {
           <Route path="/projects/:projectId/team" element={<TeamManagementPage />} />
           <Route path="/my-teams" element={<MyTeamsDashboard />} />
           <Route path="/verify-otp" element={<OTPVerification />} />
-          
+
           {/* ✅ FIXED: Single chat route using ChatContainer */}
           <Route path="/chat" element={<ChatContainer />} />
           
