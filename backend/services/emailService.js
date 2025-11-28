@@ -1,4 +1,16 @@
 const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
+
+// Check if using SendGrid or Gmail
+const USE_SENDGRID = process.env.SENDGRID_API_KEY ? true : false;
+
+// Initialize SendGrid if API key is available
+if (USE_SENDGRID) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  console.log('📧 Using SendGrid for email delivery');
+} else {
+  console.log('📧 Using Gmail SMTP for email delivery');
+}
 
 // Create email transporter with better configuration
 const createTransporter = () => {
@@ -150,8 +162,6 @@ const sendTaskAssignmentEmail = async ({
   projectId
 }) => {
   try {
-    const transporter = createTransporter();
-    
     const priorityColors = {
       low: '#10B981',
       medium: '#F59E0B',
@@ -263,20 +273,39 @@ const sendTaskAssignmentEmail = async ({
       </html>
     `;
 
+    const textContent = `Hi ${recipientName},\n\n${assignedBy} has assigned you a new task in ${projectTitle}:\n\nTask: ${taskTitle}\nDescription: ${taskDescription}\nPriority: ${priority}\nDue Date: ${dueDateFormatted}\n\nPlease log in to IIITConnect to view and manage this task.`;
+
     console.log(`📧 Attempting to send task assignment email to: ${recipientEmail}`);
     
-    const result = await transporter.sendMail({
-      from: `${process.env.EMAIL_FROM_NAME || 'IIITConnect'} <${process.env.EMAIL_USER}>`,
-      to: recipientEmail,
-      subject: `📋 New Task Assigned: ${taskTitle} - ${projectTitle}`,
-      html: htmlTemplate,
-      text: `Hi ${recipientName},\n\n${assignedBy} has assigned you a new task in ${projectTitle}:\n\nTask: ${taskTitle}\nDescription: ${taskDescription}\nPriority: ${priority}\nDue Date: ${dueDateFormatted}\n\nPlease log in to IIITConnect to view and manage this task.`
-    });
-
-    console.log(`✅ Task assignment email sent successfully to: ${recipientEmail}`);
-    console.log(`📧 Message ID: ${result.messageId}`);
+    let result;
     
-    return { success: true, messageId: result.messageId };
+    if (USE_SENDGRID) {
+      // Use SendGrid API
+      const msg = {
+        to: recipientEmail,
+        from: process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_USER,
+        subject: `📋 New Task Assigned: ${taskTitle} - ${projectTitle}`,
+        text: textContent,
+        html: htmlTemplate,
+      };
+      
+      result = await sgMail.send(msg);
+      console.log(`✅ Task assignment email sent via SendGrid to: ${recipientEmail}`);
+    } else {
+      // Use Gmail SMTP
+      const transporter = createTransporter();
+      result = await transporter.sendMail({
+        from: `${process.env.EMAIL_FROM_NAME || 'IIITConnect'} <${process.env.EMAIL_USER}>`,
+        to: recipientEmail,
+        subject: `📋 New Task Assigned: ${taskTitle} - ${projectTitle}`,
+        html: htmlTemplate,
+        text: textContent
+      });
+      console.log(`✅ Task assignment email sent via Gmail to: ${recipientEmail}`);
+      console.log(`📧 Message ID: ${result.messageId}`);
+    }
+    
+    return { success: true, messageId: result.messageId || result[0]?.statusCode };
     
   } catch (error) {
     console.error('❌ Failed to send task assignment email:', error);

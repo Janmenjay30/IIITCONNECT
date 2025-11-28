@@ -12,6 +12,7 @@
     "build": "npm install"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "amqplib": "^0.10.9",
     "axios": "^1.7.9",
     "bcrypt": "^6.0.0",
