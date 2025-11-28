@@ -29,6 +29,12 @@ router.put('/:projectId/update-role', authMiddleware, projectController.updateMe
 router.post('/:projectId/accept-application', authMiddleware, projectController.acceptApplication);
 router.post('/:projectId/reject-application', authMiddleware, projectController.rejectApplication);
 
+// Task management routes
+router.post('/:projectId/tasks', authMiddleware, projectController.createTask);
+router.get('/:projectId/tasks', authMiddleware, projectController.getProjectTasks);
+router.put('/:projectId/tasks/:taskId/status', authMiddleware, projectController.updateTaskStatus);
+router.delete('/:projectId/tasks/:taskId', authMiddleware, projectController.deleteTask);
+
 
 // Dynamic route last
 router.get('/:projectId', projectController.getProjectById);

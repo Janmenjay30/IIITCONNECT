@@ -1,7 +1,10 @@
 const Project = require('../models/project');
 const Applicant = require('../models/applicant'); // This line should already exist
 const User = require('../models/user');
+const Message = require('../models/message');
 const mongoose = require('mongoose');
+const { sendTaskAssignmentEmail } = require('../services/emailService');
+const { publishEmailJob, publishChatJob, publishTaskStatusJob, publishTaskDeleteJob } = require('../services/taskQueue');
 // const { validationResult } = require('express-validator'); // If you want validation
 
 // @desc    Create a new project
@@ -519,6 +522,251 @@ const updateMemberRole = async (req, res) => {
     }
 };
 
+// Create and assign a task
+const createTask = async (req, res) => {
+    const startTime = Date.now(); // Performance tracking
+    
+    try {
+        const { projectId } = req.params;
+        const { title, description, assignedTo, dueDate, priority } = req.body;
+
+        // Validate required fields
+        if (!title) {
+            return res.status(400).json({ message: 'Task title is required' });
+        }
+
+        // Find the project
+        const project = await Project.findById(projectId)
+            .populate('creator', 'name email')
+            .populate('teamMembers.userId', 'name email');
+
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // Check if user is the project creator (team lead)
+        if (project.creator._id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only the project creator can assign tasks' });
+        }
+
+        // If assignedTo is provided, verify they are a team member
+        let assignedUser = null;
+        if (assignedTo) {
+            const isMember = project.teamMembers.some(
+                member => member.userId._id.toString() === assignedTo
+            );
+            const isCreator = project.creator._id.toString() === assignedTo;
+
+            if (!isMember && !isCreator) {
+                return res.status(400).json({ message: 'Cannot assign task to non-team member' });
+            }
+
+            assignedUser = await User.findById(assignedTo).select('name email');
+            if (!assignedUser) {
+                return res.status(404).json({ message: 'Assigned user not found' });
+            }
+        }
+
+        // Create the task
+        const newTask = {
+            title,
+            description: description || '',
+            assignedTo: assignedTo || null,
+            status: 'pending',
+            priority: priority || 'medium',
+            dueDate: dueDate || null,
+            createdBy: req.user._id,
+            createdAt: new Date()
+        };
+
+        project.tasks.push(newTask);
+        await project.save();
+
+        // Get the created task (it's the last one in the array)
+        const createdTask = project.tasks[project.tasks.length - 1];
+        const responseTime = Date.now() - startTime;
+
+        // 🚀 RESPOND IMMEDIATELY - Don't wait for email/chat (background processing)
+        res.status(201).json({
+            message: 'Task created successfully',
+            task: createdTask,
+            emailSent: !!assignedUser,
+            chatNotified: true,
+            performanceMs: responseTime
+        });
+
+        // 🔥 RABBITMQ BACKGROUND PROCESSING - Publish jobs to queue
+        // Email notification via RabbitMQ (reliable, with retries)
+        if (assignedUser) {
+            publishEmailJob({
+                recipientEmail: assignedUser.email,
+                recipientName: assignedUser.name,
+                taskTitle: title,
+                taskDescription: description || 'No description provided',
+                projectTitle: project.title,
+                assignedBy: req.user.name,
+                dueDate: dueDate,
+                priority: priority || 'medium',
+                projectId: project._id
+            }).catch(emailError => {
+                console.error('❌ Failed to publish email job:', emailError);
+            });
+        }
+
+        // Chat notification via RabbitMQ (reliable, with retries)
+        publishChatJob({
+            projectId,
+            title,
+            assignedUser,
+            priority: priority || 'medium',
+            dueDate,
+            userId: req.user._id,
+            userName: req.user.name
+        }).catch(chatError => {
+            console.error('❌ Failed to publish chat job:', chatError);
+        });
+
+        console.log(`⚡ Task created and responded in ${responseTime}ms (notifications processing in background)`);
+
+    } catch (err) {
+        console.error('❌ Error creating task:', err);
+        res.status(500).json({ 
+            message: 'Server Error in creating task',
+            error: err.message 
+        });
+    }
+};
+
+// Get all tasks for a project
+const getProjectTasks = async (req, res) => {
+    try {
+        const { projectId } = req.params;
+
+        const project = await Project.findById(projectId)
+            .select('tasks title')
+            .populate('tasks.assignedTo', 'name email profilePicture')
+            .populate('tasks.createdBy', 'name email');
+
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        res.json({
+            projectId: project._id,
+            projectTitle: project.title,
+            tasks: project.tasks
+        });
+
+    } catch (err) {
+        console.error('❌ Error getting tasks:', err);
+        res.status(500).json({ message: 'Server Error in getting tasks' });
+    }
+};
+
+// Update task status
+const updateTaskStatus = async (req, res) => {
+    try {
+        const { projectId, taskId } = req.params;
+        const { status } = req.body;
+
+        if (!['pending', 'in-progress', 'completed'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value' });
+        }
+
+        const project = await Project.findById(projectId)
+            .populate('creator', 'name email')
+            .populate('teamMembers.userId', 'name email');
+
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        const task = project.tasks.id(taskId);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        // Check if user is assigned to this task or is the project creator
+        const isAssigned = task.assignedTo && task.assignedTo.toString() === req.user._id.toString();
+        const isCreator = project.creator._id.toString() === req.user._id.toString();
+
+        if (!isAssigned && !isCreator) {
+            return res.status(403).json({ message: 'You are not authorized to update this task' });
+        }
+
+        task.status = status;
+        if (status === 'completed') {
+            task.completedAt = new Date();
+        }
+
+        await project.save();
+
+        // Send response immediately
+        res.json({
+            message: 'Task status updated successfully',
+            task
+        });
+
+        // Publish task status update to RabbitMQ (background)
+        publishTaskStatusJob({
+            projectId,
+            taskTitle: task.title,
+            status,
+            userName: req.user.name,
+            userId: req.user._id
+        }).catch(error => {
+            console.error('❌ Failed to publish task status job:', error);
+        });
+
+    } catch (err) {
+        console.error('❌ Error updating task:', err);
+        res.status(500).json({ message: 'Server Error in updating task status' });
+    }
+};
+
+// Delete a task
+const deleteTask = async (req, res) => {
+    try {
+        const { projectId, taskId } = req.params;
+
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // Only creator can delete tasks
+        if (project.creator.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Only project creator can delete tasks' });
+        }
+
+        const task = project.tasks.id(taskId);
+        if (!task) {
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        const taskTitle = task.title;
+        project.tasks.pull(taskId);
+        await project.save();
+
+        // Send response immediately
+        res.json({ message: 'Task deleted successfully' });
+
+        // Publish task delete notification to RabbitMQ (background)
+        publishTaskDeleteJob({
+            projectId,
+            taskTitle,
+            userName: req.user.name,
+            userId: req.user._id
+        }).catch(error => {
+            console.error('❌ Failed to publish task delete job:', error);
+        });
+
+    } catch (err) {
+        console.error('❌ Error deleting task:', err);
+        res.status(500).json({ message: 'Server Error in deleting task' });
+    }
+};
+
 module.exports = { 
     createProject,
     getAllProjects, 
@@ -532,5 +780,9 @@ module.exports = {
     getMyTeams ,
     removeMember,
     leaveProject,
-    updateMemberRole
+    updateMemberRole,
+    createTask,
+    getProjectTasks,
+    updateTaskStatus,
+    deleteTask
 };

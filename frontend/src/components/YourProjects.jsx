@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import ApplicationModal from "./Modals/ApplicationsModals";
 import { toast } from "react-hot-toast";
 import axiosInstance from "../utils/axios";
+import TaskManagement from "./TaskManagement";
 
 const YourProjects = () => {
   const [projects, setProjects] = useState([]);
@@ -16,6 +17,9 @@ const YourProjects = () => {
   const [modalError, setModalError] = useState(null);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskProjectId, setTaskProjectId] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const navigate = useNavigate();
 
 
@@ -78,8 +82,29 @@ const YourProjects = () => {
     setExpandedProject(expandedProject === projectId ? null : projectId);
   };
 
+  const handleOpenTaskModal = (projectId) => {
+    setTaskProjectId(projectId);
+    setShowTaskModal(true);
+  };
+
+  const handleCloseTaskModal = () => {
+    setShowTaskModal(false);
+    setTaskProjectId(null);
+    fetchYourProjects(); // Refresh to update task counts
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await axiosInstance.get('/api/auth/profile');
+      setCurrentUserId(response.data.data?.user?._id || response.data._id);
+    } catch (error) {
+      console.error('Failed to fetch user:', error);
+    }
+  };
+
   useEffect(() => {
     fetchYourProjects();
+    fetchCurrentUser();
   }, []);
 
   const getStatusColor = (status) => {
@@ -168,6 +193,13 @@ const YourProjects = () => {
                         {expandedProject === project._id ? 'Less' : 'More'}
                       </button>
                       <button
+                        onClick={() => handleOpenTaskModal(project._id)}
+                        className="bg-purple-600 text-white px-3 py-1 rounded text-sm hover:bg-purple-700 flex items-center gap-1"
+                        title="Manage Tasks"
+                      >
+                        📋 Tasks
+                      </button>
+                      <button
                         onClick={() => navigate(`/projects/${project._id}`)}
                         className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700"
                       >
@@ -198,6 +230,28 @@ const YourProjects = () => {
                 {/* Expanded Project Details */}
                 {expandedProject === project._id && (
                   <div className="p-6 bg-gray-50">
+                    {/* Quick Action Buttons */}
+                    <div className="mb-6 flex gap-3 flex-wrap">
+                      <button
+                        onClick={() => handleOpenTaskModal(project._id)}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-md flex items-center gap-2 font-semibold"
+                      >
+                        📋 Assign Task to Team Members
+                      </button>
+                      <button
+                        onClick={() => navigate(`/projects/${project._id}/team`)}
+                        className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors shadow-md flex items-center gap-2 font-semibold"
+                      >
+                        👥 Manage Team
+                      </button>
+                      <button
+                        onClick={() => navigate(`/projects/${project._id}`)}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2 font-semibold"
+                      >
+                        📄 View Full Details
+                      </button>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Required Roles */}
                       <div>
@@ -313,6 +367,44 @@ const YourProjects = () => {
           loading={modalLoading}
           error={modalError}
         />
+
+        {/* Task Management Modal */}
+        {showTaskModal && taskProjectId && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-6 flex justify-between items-center">
+                <h2 className="text-2xl font-bold">📋 Task Management</h2>
+                <button
+                  onClick={handleCloseTaskModal}
+                  className="text-white hover:text-gray-200 text-3xl leading-none"
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
+              
+              {/* Modal Body - Scrollable */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <TaskManagement
+                  projectId={taskProjectId}
+                  isCreator={true}
+                  currentUserId={currentUserId}
+                />
+              </div>
+              
+              {/* Modal Footer */}
+              <div className="bg-gray-50 px-6 py-4 border-t flex justify-end">
+                <button
+                  onClick={handleCloseTaskModal}
+                  className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

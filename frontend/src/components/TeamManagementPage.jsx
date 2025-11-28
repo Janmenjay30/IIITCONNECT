@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 import axiosInstance from '../utils/axios';
+import TaskManagement from './TaskManagement';
 
 const TeamManagementPage = () => {
   const { projectId } = useParams();
@@ -227,6 +228,15 @@ const TeamManagementPage = () => {
               </p>
             </div>
           )}
+        </div>
+
+        {/* Task Management Section */}
+        <div className="mt-8">
+          <TaskManagement 
+            projectId={projectId}
+            isCreator={isCreator}
+            currentUserId={user?._id}
+          />
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 import axiosInstance from '../utils/axios';
+import TaskManagement from './TaskManagement';
 
 function ProjectDetails() {
     const [project, setProject] = useState({
@@ -363,6 +364,17 @@ function ProjectDetails() {
             {/* Background overlay for modal */}
             {isPopUp && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-40"></div>
+            )}
+
+            {/* Task Management Section - Show for team members and creator */}
+            {(isTeamMember || isCreator) && (
+                <div className="mt-8">
+                    <TaskManagement 
+                        projectId={projectId}
+                        isCreator={isCreator}
+                        currentUserId={user?._id}
+                    />
+                </div>
             )}
         </div>
     );

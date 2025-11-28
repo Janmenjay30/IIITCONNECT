@@ -21,6 +21,10 @@ const User = require('./models/user');
 const Message = require('./models/message');
 require('./models/applicant');
 
+// Import RabbitMQ configuration and workers
+const { connectRabbitMQ, closeConnection } = require('./config/rabbitmq');
+const { startAllWorkers } = require('./workers/taskWorker');
+
 // Create Express app and HTTP server
 const app = express();
 const server = http.createServer(app);
@@ -212,6 +216,9 @@ socket.on('chat message', async (msg) => {
   });
 });
 
+// Make io instance available to routes/controllers
+app.set('io', io);
+
 // Health check route
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -284,9 +291,16 @@ process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
   server.close(() => {
     console.log('✅ Server closed');
-    mongoose.connection.close(false, () => {
-      console.log('✅ MongoDB connection closed');
-      process.exit(0);
+    
+    // Close RabbitMQ connection
+    closeConnection().then(() => {
+      console.log('✅ RabbitMQ connection closed');
+      
+      // Close MongoDB connection
+      mongoose.connection.close(false, () => {
+        console.log('✅ MongoDB connection closed');
+        process.exit(0);
+      });
     });
   });
 });
@@ -295,19 +309,40 @@ process.on('SIGINT', () => {
   console.log('🛑 SIGINT received, shutting down gracefully');
   server.close(() => {
     console.log('✅ Server closed');
-    mongoose.connection.close(false, () => {
-      console.log('✅ MongoDB connection closed');
-      process.exit(0);
+    
+    // Close RabbitMQ connection
+    closeConnection().then(() => {
+      console.log('✅ RabbitMQ connection closed');
+      
+      // Close MongoDB connection
+      mongoose.connection.close(false, () => {
+        console.log('✅ MongoDB connection closed');
+        process.exit(0);
+      });
     });
   });
 });
 
 // Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📍 Socket.IO server initialized`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Initialize RabbitMQ and start workers
+  try {
+    console.log('\n🐰 Initializing RabbitMQ...');
+    await connectRabbitMQ();
+    console.log('✅ RabbitMQ connected successfully');
+    
+    // Start background workers
+    await startAllWorkers(io);
+    console.log('✅ All RabbitMQ workers started\n');
+  } catch (error) {
+    console.error('❌ Failed to initialize RabbitMQ:', error.message);
+    console.log('⚠️ Server will continue without RabbitMQ (notifications disabled)');
+  }
 });
 
 // Export for testing

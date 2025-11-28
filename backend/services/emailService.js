@@ -137,8 +137,156 @@ const sendOTPEmail = async (email, name, otp) => {
   }
 };
 
+// Send Task Assignment Email
+const sendTaskAssignmentEmail = async ({
+  recipientEmail,
+  recipientName,
+  taskTitle,
+  taskDescription,
+  projectTitle,
+  assignedBy,
+  dueDate,
+  priority,
+  projectId
+}) => {
+  try {
+    const transporter = createTransporter();
+    
+    const priorityColors = {
+      low: '#10B981',
+      medium: '#F59E0B',
+      high: '#EF4444'
+    };
+
+    const priorityEmojis = {
+      low: '🟢',
+      medium: '🟡',
+      high: '🔴'
+    };
+
+    const dueDateFormatted = dueDate 
+      ? new Date(dueDate).toLocaleDateString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })
+      : 'No deadline set';
+
+    const htmlTemplate = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          .container { max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: white; padding: 30px; border: 1px solid #e0e0e0; }
+          .task-box { background: #F9FAFB; border-left: 4px solid #667eea; border-radius: 8px; padding: 20px; margin: 20px 0; }
+          .task-title { font-size: 24px; font-weight: bold; color: #1F2937; margin-bottom: 10px; }
+          .task-description { color: #4B5563; line-height: 1.6; margin: 15px 0; }
+          .task-meta { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 20px; }
+          .meta-item { background: white; border: 1px solid #E5E7EB; border-radius: 6px; padding: 10px 15px; }
+          .meta-label { font-size: 12px; color: #6B7280; text-transform: uppercase; font-weight: 600; }
+          .meta-value { font-size: 14px; color: #1F2937; margin-top: 4px; }
+          .priority-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; }
+          .action-button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; }
+          .action-button:hover { background: #5568d3; }
+          .footer { background: #F9FAFB; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📋 New Task Assigned</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">You have a new task in ${projectTitle}</p>
+          </div>
+          
+          <div class="content">
+            <p>Hi <strong>${recipientName}</strong>,</p>
+            
+            <p><strong>${assignedBy}</strong> has assigned a new task to you in the <strong>${projectTitle}</strong> project.</p>
+            
+            <div class="task-box">
+              <div class="task-title">${taskTitle}</div>
+              <div class="task-description">${taskDescription}</div>
+              
+              <div class="task-meta">
+                <div class="meta-item">
+                  <div class="meta-label">Priority</div>
+                  <div class="meta-value">
+                    <span class="priority-badge" style="background-color: ${priorityColors[priority]}">
+                      ${priorityEmojis[priority]} ${priority.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                
+                <div class="meta-item">
+                  <div class="meta-label">Due Date</div>
+                  <div class="meta-value">${dueDateFormatted}</div>
+                </div>
+                
+                <div class="meta-item">
+                  <div class="meta-label">Assigned By</div>
+                  <div class="meta-value">${assignedBy}</div>
+                </div>
+              </div>
+            </div>
+            
+            <p style="margin-top: 25px;">
+              <strong>Next Steps:</strong>
+            </p>
+            <ul style="color: #374151; line-height: 1.8;">
+              <li>Review the task details carefully</li>
+              <li>Update the task status as you progress</li>
+              <li>Communicate with your team if you need help</li>
+              <li>Mark the task as completed when done</li>
+            </ul>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="http://localhost:5173/projects/${projectId}" class="action-button">
+                View Task in Project
+              </a>
+            </div>
+            
+            <div style="background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 15px; margin: 20px 0;">
+              <strong>💡 Tip:</strong> You can also see this task in your project's team chat and update its status from there.
+            </div>
+          </div>
+          
+          <div class="footer">
+            <p><strong>IIITConnect Team</strong></p>
+            <p style="font-size: 12px; color: #9CA3AF;">This email was automatically generated. Please do not reply.</p>
+            <p style="color: #6B7280;">&copy; ${new Date().getFullYear()} IIITConnect. Empowering student collaboration.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    console.log(`📧 Attempting to send task assignment email to: ${recipientEmail}`);
+    
+    const result = await transporter.sendMail({
+      from: `${process.env.EMAIL_FROM_NAME || 'IIITConnect'} <${process.env.EMAIL_USER}>`,
+      to: recipientEmail,
+      subject: `📋 New Task Assigned: ${taskTitle} - ${projectTitle}`,
+      html: htmlTemplate,
+      text: `Hi ${recipientName},\n\n${assignedBy} has assigned you a new task in ${projectTitle}:\n\nTask: ${taskTitle}\nDescription: ${taskDescription}\nPriority: ${priority}\nDue Date: ${dueDateFormatted}\n\nPlease log in to IIITConnect to view and manage this task.`
+    });
+
+    console.log(`✅ Task assignment email sent successfully to: ${recipientEmail}`);
+    console.log(`📧 Message ID: ${result.messageId}`);
+    
+    return { success: true, messageId: result.messageId };
+    
+  } catch (error) {
+    console.error('❌ Failed to send task assignment email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendOTPEmail,
-  testEmailConnection
+  testEmailConnection,
+  sendTaskAssignmentEmail
 };
