@@ -53,7 +53,11 @@ const corsOptions = {
       process.env.CORS_ORIGIN
     ].filter(Boolean);
     
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin is in allowed list OR is a Vercel preview URL
+    const isAllowed = allowedOrigins.includes(origin) || 
+                      origin.endsWith('.vercel.app');
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.log('❌ Origin not allowed by CORS:', origin);
@@ -85,12 +89,17 @@ db()
 // Socket.IO Configuration
 const io = socketIO(server, {
   cors: {
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'https://iiitconnect.vercel.app',
-      process.env.CORS_ORIGIN
-    ].filter(Boolean),
+    origin: (origin, callback) => {
+      // Allow localhost, production, and all Vercel preview URLs
+      if (!origin || 
+          origin.includes('localhost') || 
+          origin.endsWith('.vercel.app') ||
+          origin === process.env.CORS_ORIGIN) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
