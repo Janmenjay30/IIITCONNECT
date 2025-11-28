@@ -93,9 +93,15 @@ const TaskManagement = ({ projectId, isCreator, currentUserId }) => {
 
     try {
       // 🔥 Background API call (doesn't block UI)
+      // Convert empty string to null for assignedTo
+      const taskData = {
+        ...formData,
+        assignedTo: formData.assignedTo || null
+      };
+      
       const response = await axiosInstance.post(
         `/api/projects/${projectId}/tasks`,
-        formData
+        taskData
       );
 
       const performanceEnd = performance.now();

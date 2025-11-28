@@ -4,7 +4,7 @@ let connection = null;
 let channel = null;
 
 // RabbitMQ Configuration
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
+const RABBITMQ_URL = process.env.RABBITMQ_URL ;
 const EXCHANGE_NAME = 'iiitconnect_exchange';
 const QUEUE_NAMES = {
     EMAIL: 'email_notifications',
