@@ -266,6 +266,10 @@ const sendTaskAssignmentEmail = async ({
           <div class="footer">
             <p><strong>IIITConnect Team</strong></p>
             <p style="font-size: 12px; color: #9CA3AF;">This email was automatically generated. Please do not reply.</p>
+            <p style="color: #6B7280; font-size: 11px; margin-top: 10px;">
+              You're receiving this because you're part of the ${projectTitle} team.<br>
+              Notification preferences can be managed in your account settings.
+            </p>
             <p style="color: #6B7280;">&copy; ${new Date().getFullYear()} IIITConnect. Empowering student collaboration.</p>
           </div>
         </div>
