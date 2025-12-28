@@ -34,7 +34,8 @@ userSchema.virtual('projects', {
 });
   
 // Single-field index + unique for email (explicit)
-userSchema.index({ email: 1 }, { unique: true, background: true });
+// NOTE: `email` already declares `unique: true` in the schema above, which creates an index.
+// Keeping a second explicit index definition causes Mongoose's "Duplicate schema index" warning.
 
 // Multikey index for skills (array field)
 userSchema.index({ skills: 1 }, { background: true });

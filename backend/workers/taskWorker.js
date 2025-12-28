@@ -1,5 +1,5 @@
 const { consumeQueue, QUEUE_NAMES } = require('../config/rabbitmq');
-const { sendTaskAssignmentEmail } = require('../services/emailService');
+const { sendTaskAssignmentEmail, sendOTPEmail } = require('../services/emailService');
 const Message = require('../models/message');
 
 // Email Worker - Processes email notifications
@@ -19,7 +19,11 @@ const startEmailWorker = async () => {
                     await sendTaskAssignmentEmail(data);
                     console.log(`✅ Task assignment email sent to ${data.recipientEmail}`);
                 }
-                // Add more email types here as needed
+                else if (type === 'OTP_VERIFICATION') {
+                    // data: { email, name, otp }
+                    await sendOTPEmail(data.email, data.name, data.otp);
+                    console.log(`✅ OTP email sent to ${data.email}`);
+                }
             } catch (error) {
                 console.error('❌ Email sending failed:', error);
                 throw error;  // Will trigger retry logic

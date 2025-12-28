@@ -1,7 +1,5 @@
-import axios from "axios";
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import API_URL from "../config/api";
 import axiosInstance from '../utils/axios';
 import toast from "react-hot-toast";
 
@@ -39,17 +37,19 @@ const RegisterPage = () => {
       if (response.status === 200 || response.status === 201) {  // Check for 200 OK or 201 Created
         // Registration successful
         console.log("Registration Successful:", response.data);
-        toast.success("Registration successful! Please log in.");
-        // Store token if the backend returns one
-        if (response.data.token) {
-          localStorage.setItem("token", response.data.token); // Store token in local storage
-        }
+
+        // Backend sends OTP; user must verify before login.
+        const message = response.data?.message || "Verification code sent to your email. Please check your inbox.";
+        toast.success(message);
+
         // Navigate to OTP verification page
-      navigate('/verify-otp', {
-        state: {
-          email: formData.email
-        }
-      });
+        navigate('/verify-otp', {
+          state: {
+            email: formData.email,
+            type: 'register',
+            message
+          }
+        });
       } else {
         // Registration failed
         console.error("Registration Failed:", response.data);

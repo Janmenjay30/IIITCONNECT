@@ -2,6 +2,7 @@ const User = require('../models/user');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { generateOTP, sendOTPEmail } = require('../services/emailService');
+const { publishOtpEmailJob } = require('../services/taskQueueAdapter');
 
 // ✅ REGISTER - Generate OTP and send email (NO JWT yet)
 const register = async (req, res) => {
@@ -54,14 +55,12 @@ const register = async (req, res) => {
         
         await existingUser.save();
         
-        // Send OTP email
-        const emailResult = await sendOTPEmail(email, name, otp);
-        
-        if (!emailResult.success) {
-          return res.status(500).json({
-            success: false,
-            message: 'Failed to send verification email. Please try again.'
-          });
+        // Queue OTP email (fallback to async direct send on publish failure)
+        try {
+          await publishOtpEmailJob({ email, name, otp });
+        } catch (queueError) {
+          console.warn('⚠️ OTP email queue publish failed, falling back to direct async send:', queueError.message);
+          setImmediate(() => sendOTPEmail(email, name, otp));
         }
         
         return res.status(200).json({
@@ -96,16 +95,12 @@ const register = async (req, res) => {
 
     await newUser.save();
 
-    // Send OTP email
-    const emailResult = await sendOTPEmail(email, name, otp);
-    
-    if (!emailResult.success) {
-      // If email sending fails, delete the created user
-      await User.findByIdAndDelete(newUser._id);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send verification email. Please try again.'
-      });
+    // Queue OTP email (fallback to async direct send on publish failure)
+    try {
+      await publishOtpEmailJob({ email, name, otp });
+    } catch (queueError) {
+      console.warn('⚠️ OTP email queue publish failed, falling back to direct async send:', queueError.message);
+      setImmediate(() => sendOTPEmail(email, name, otp));
     }
 
     console.log(`✅ User registered successfully: ${email} - OTP sent`);
@@ -267,14 +262,12 @@ const resendOTP = async (req, res) => {
     user.emailOTPExpires = otpExpires;
     await user.save();
 
-    // Send new OTP email
-    const emailResult = await sendOTPEmail(email, user.name, otp);
-    
-    if (!emailResult.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send verification email'
-      });
+    // Queue new OTP email (fallback to async direct send on publish failure)
+    try {
+      await publishOtpEmailJob({ email, name: user.name, otp });
+    } catch (queueError) {
+      console.warn('⚠️ OTP email queue publish failed, falling back to direct async send:', queueError.message);
+      setImmediate(() => sendOTPEmail(email, user.name, otp));
     }
 
     console.log(`✅ OTP resent to: ${email}`);

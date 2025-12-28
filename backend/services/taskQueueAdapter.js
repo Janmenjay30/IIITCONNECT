@@ -42,12 +42,13 @@ const sendDirectChat = async (chatData, io) => {
 };
 
 // Export appropriate functions based on environment
-let publishEmailJob, publishChatJob, publishTaskStatusJob, publishTaskDeleteJob;
+let publishEmailJob, publishOtpEmailJob, publishChatJob, publishTaskStatusJob, publishTaskDeleteJob;
 
 if (USE_RABBITMQ) {
     // Use RabbitMQ queues
     const rabbitMQQueue = require('./taskQueue');
     publishEmailJob = rabbitMQQueue.publishEmailJob;
+    publishOtpEmailJob = rabbitMQQueue.publishOtpEmailJob;
     publishChatJob = rabbitMQQueue.publishChatJob;
     publishTaskStatusJob = rabbitMQQueue.publishTaskStatusJob;
     publishTaskDeleteJob = rabbitMQQueue.publishTaskDeleteJob;
@@ -55,6 +56,11 @@ if (USE_RABBITMQ) {
     // Use direct notifications (no queues)
     publishEmailJob = async (emailData) => {
         setImmediate(() => sendDirectEmail(emailData));
+    };
+
+    publishOtpEmailJob = async (otpEmailData) => {
+        const { sendOTPEmail } = require('../services/emailService');
+        setImmediate(() => sendOTPEmail(otpEmailData.email, otpEmailData.name, otpEmailData.otp));
     };
     
     publishChatJob = async (chatData) => {
@@ -122,6 +128,7 @@ if (USE_RABBITMQ) {
 
 module.exports = {
     publishEmailJob,
+    publishOtpEmailJob,
     publishChatJob,
     publishTaskStatusJob,
     publishTaskDeleteJob

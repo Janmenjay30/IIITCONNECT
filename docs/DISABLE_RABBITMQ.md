@@ -16,11 +16,11 @@ The server is already configured to work without RabbitMQ. Just ignore the error
 Add to `backend/.env`:
 
 ```env
-# Disable RabbitMQ
-ENABLE_RABBITMQ=false
+# Disable RabbitMQ (this repo uses USE_RABBITMQ)
+USE_RABBITMQ=false
 ```
 
-Then update `backend/index.js` to check this variable before connecting.
+This repo already supports the fallback path when `USE_RABBITMQ=false`.
 
 ## Option 3: Comment Out RabbitMQ Initialization
 

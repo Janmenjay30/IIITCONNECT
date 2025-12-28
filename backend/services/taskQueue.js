@@ -15,6 +15,21 @@ const publishEmailJob = async (emailData) => {
     }
 };
 
+// Publish OTP verification email job
+const publishOtpEmailJob = async (otpEmailData) => {
+    try {
+        await publishToQueue('email.otp_verification', {
+            type: 'OTP_VERIFICATION',
+            data: otpEmailData,
+            createdAt: new Date().toISOString()
+        });
+        console.log('✅ OTP email job published to RabbitMQ');
+    } catch (error) {
+        console.error('❌ Failed to publish OTP email job:', error);
+        throw error;
+    }
+};
+
 // Publish chat notification job
 const publishChatJob = async (chatData) => {
     try {
@@ -62,6 +77,7 @@ const publishTaskDeleteJob = async (deleteData) => {
 
 module.exports = {
     publishEmailJob,
+    publishOtpEmailJob,
     publishChatJob,
     publishTaskStatusJob,
     publishTaskDeleteJob

@@ -145,19 +145,19 @@ nano .env
 ### 5.2 Add environment variables
 ```env
 NODE_ENV=production
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/IIITConnect
-JWT_SECRET=your-super-secret-key
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>
+JWT_SECRET=<generate-random-64-char-string>
 PORT=5000
 
-EMAIL_USER=your-email@gmail.com
-EMAIL_APP_PASSWORD=your-app-password
+EMAIL_USER=<your-gmail-address>
+EMAIL_APP_PASSWORD=<gmail-app-password>
 EMAIL_FROM_NAME=IIITConnect Team
 
-SENDGRID_API_KEY=SG.your-sendgrid-api-key
-SENDGRID_FROM_EMAIL=your-verified-email@gmail.com
+SENDGRID_API_KEY=SG.<your-sendgrid-api-key>
+SENDGRID_FROM_EMAIL=<your-verified-sendgrid-email>
 
 USE_RABBITMQ=true
-RABBITMQ_URL=amqps://user:pass@host.lmq.cloudamqp.com/vhost
+RABBITMQ_URL=amqps://<username>:<password>@<host>.lmq.cloudamqp.com/<vhost>
 
 CORS_ORIGIN=http://your-ec2-ip:3000
 ```
