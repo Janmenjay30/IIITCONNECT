@@ -64,12 +64,12 @@ if (USE_RABBITMQ) {
     };
     
     publishChatJob = async (chatData) => {
-        const io = require('../index').io;
+        const io = require('../app').io;
         setImmediate(() => sendDirectChat(chatData, io));
     };
     
     publishTaskStatusJob = async (statusData) => {
-        const io = require('../index').io;
+        const io = require('../app').io;
         const Message = require('../models/message');
         setImmediate(async () => {
             try {
@@ -98,7 +98,7 @@ if (USE_RABBITMQ) {
     };
     
     publishTaskDeleteJob = async (deleteData) => {
-        const io = require('../index').io;
+        const io = require('../app').io;
         const Message = require('../models/message');
         setImmediate(async () => {
             try {

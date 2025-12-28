@@ -17,7 +17,7 @@
    AMI: Amazon Linux 2023 (or Ubuntu 22.04)
    Instance type: t2.micro (Free Tier)
    Key pair: Create new → Download .pem file
-   Network: Allow HTTP (80), HTTPS (443), Custom TCP (5000, 3000)
+  Network: Allow HTTP (80) and HTTPS (443)
    Storage: 8 GB gp3 (Free Tier)
    ```
 
@@ -26,9 +26,11 @@
    SSH (22)     - Your IP
    HTTP (80)    - 0.0.0.0/0
    HTTPS (443)  - 0.0.0.0/0
-   Custom (5000) - 0.0.0.0/0  (Backend API)
-   Custom (3000) - 0.0.0.0/0  (Frontend)
    ```
+
+  Notes:
+  - Recommended: expose only 80/443 publicly. The frontend Nginx can reverse-proxy `/api` and `/socket.io` to the backend container over the private Docker network.
+  - Only open 5000/3000 for debugging, then close them.
 
 4. Click **Launch Instance**
 
@@ -159,7 +161,12 @@ SENDGRID_FROM_EMAIL=<your-verified-sendgrid-email>
 USE_RABBITMQ=true
 RABBITMQ_URL=amqps://<username>:<password>@<host>.lmq.cloudamqp.com/<vhost>
 
-CORS_ORIGIN=http://your-ec2-ip:3000
+# Must match the browser origin that loads your frontend.
+# If you expose only port 80: use http://your-ec2-ip (or https://yourdomain.com)
+CORS_ORIGIN=http://your-ec2-ip
+
+# If you don't want RabbitMQ initially:
+# USE_RABBITMQ=false
 ```
 
 ### 5.3 Create docker-compose.yml on EC2
@@ -174,8 +181,6 @@ services:
   backend:
     image: <account-id>.dkr.ecr.us-east-1.amazonaws.com/iiitconnect-backend:latest
     container_name: iiitconnect-backend
-    ports:
-      - "5000:5000"
     env_file:
       - .env
     restart: unless-stopped
@@ -184,15 +189,45 @@ services:
     image: <account-id>.dkr.ecr.us-east-1.amazonaws.com/iiitconnect-frontend:latest
     container_name: iiitconnect-frontend
     ports:
-      - "3000:80"
+      - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
 ```
 
+Why remove backend ports?
+- With the default frontend Nginx config, requests to `/api` and `/socket.io` are reverse-proxied to the backend container using the internal Docker network. This keeps your API off the public internet except through port 80/443.
+
+If you want the old behavior (not recommended), you can publish `5000:5000` and access the API directly.
+
 ---
 
 ## Step 6: Initial Manual Deployment
+
+You have two deployment options:
+
+### Option A (Simplest): Build on EC2 from Git
+Use this if you don't want ECR yet.
+
+1) SSH into EC2, then:
+```bash
+mkdir -p ~/iiitconnect
+cd ~/iiitconnect
+
+# Install git if needed
+sudo yum install -y git || true
+
+git clone <YOUR_GITHUB_REPO_URL> .
+
+# Create .env (see Step 5.2)
+nano .env
+
+# Build and run
+docker compose up -d --build
+docker compose logs -f
+```
+
+### Option B (Recommended for CI/CD): ECR images
 
 ### 6.1 Build and push images locally (first time)
 ```bash
@@ -345,9 +380,9 @@ aws ecr get-login-password --region us-east-1 | docker login --username AWS --pa
 
 ## Access Your Application
 
-- **Frontend**: `http://<EC2-PUBLIC-IP>:3000`
-- **Backend API**: `http://<EC2-PUBLIC-IP>:5000`
-- **Backend Health**: `http://<EC2-PUBLIC-IP>:5000/`
+- **Frontend**: `http://<EC2-PUBLIC-IP>`
+- **Backend API**: `http://<EC2-PUBLIC-IP>/api/...`
+- **Backend Health**: `http://<EC2-PUBLIC-IP>/` (served by the backend container, via `/api` you can also add a dedicated health endpoint if you prefer)
 
 ---
 
