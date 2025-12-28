@@ -41,6 +41,11 @@ if (!process.env.JWT_SECRET) {
 }
 
 // CORS Configuration
+const envCorsOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, Postman, etc.)
@@ -50,8 +55,8 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:5173',
       'https://iiitconnect.vercel.app',
-      process.env.CORS_ORIGIN
-    ].filter(Boolean);
+      ...envCorsOrigins
+    ];
     
     // Check if origin is in allowed list OR is a Vercel preview URL
     const isAllowed = allowedOrigins.includes(origin) || 
@@ -94,7 +99,7 @@ const io = socketIO(server, {
       if (!origin || 
           origin.includes('localhost') || 
           origin.endsWith('.vercel.app') ||
-          origin === process.env.CORS_ORIGIN) {
+          envCorsOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
