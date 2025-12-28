@@ -8,6 +8,8 @@ services:
     container_name: iiitconnect-backend
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - MONGO_URI=${MONGO_URI}
@@ -20,7 +22,7 @@ services:
       - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL}
       - USE_RABBITMQ=${USE_RABBITMQ}
       - RABBITMQ_URL=${RABBITMQ_URL}
-      - CORS_ORIGIN=http://localhost:3000
+      - CORS_ORIGIN=${CORS_ORIGIN}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
